@@ -122,6 +122,9 @@ CColourSet*         m_CurrentColours;
 uint8_t             *CurrentTimeHours, *CurrentTimeMinutes;
 uint32_t            *m_snTimeInMillisecondsPauseMode;
 RsGlobalType*       RsGlobal;
+float*              UnderWaterness;
+float*              game_FPS;
+float*              ms_fFarClipPlane;
 
 // Org Fns
 char                (*GetIsTimeInRange)(char hourA, char hourB);
@@ -139,6 +142,7 @@ void                (*RwRenderStateSet)(RwRenderState, void*);
 void                (*FlushSpriteBuffer)();
 bool                (*CalcScreenCoors)(CVector*, CVector*, float*, float*, bool, bool);
 void                (*RenderBufferedOneXLUSprite_Rotate_Aspect)(float,float,float,float,float,uint8_t,uint8_t,uint8_t,short,float,float,uint8_t);
+CPlayerPed*         (*FindPlayerPed)(int playerId);
 // Vars
 std::map<unsigned int, CLODLightsLinkedListNode*> LODLightsUsedMap;
 CLODLightsLinkedListNode LODLightsFreeList, LODLightsUsedList;
@@ -558,7 +562,37 @@ void RegisterLODLights()
 }
 void DrawDistanceChanger()
 {
-    
+    fNewFarClip = 500.0f;
+
+    CPlayerPed* pPlayerPed = FindPlayerPed(-1);
+    if (pPlayerPed && pPlayerPed->m_nInterior != 8 && *nActiveInterior == 0)
+    {
+        if (bAdaptiveDrawDistanceEnabled)
+        {
+            if (*game_FPS < nMinFPSValue)
+            {
+                fMinDrawDistanceOnTheGround -= 2.0f;
+            }
+            else if (*game_FPS >= nMaxFPSValue)
+            {
+                fMinDrawDistanceOnTheGround += 2.0f;
+            }
+
+            if (fMinDrawDistanceOnTheGround < 800.0f) fMinDrawDistanceOnTheGround = 800.0f;
+            else if (fMinDrawDistanceOnTheGround > fMaxPossibleDrawDistance) fMinDrawDistanceOnTheGround = fMaxPossibleDrawDistance;
+        }
+
+        if (*UnderWaterness <= 0.339731634f)
+        {
+            fNewFarClip = (fFactor1 / fFactor2) * (TheCamera->GetPosition().z) + fMinDrawDistanceOnTheGround;
+        }
+        else
+        {
+            fNewFarClip = m_CurrentColours->farclp;
+        }
+    }
+
+    *ms_fFarClipPlane = fNewFarClip;
 }
 
 void SetMaxDrawDistanceForNormalObjects(float v)
@@ -628,6 +662,10 @@ DECL_HOOKv(Idle_DebugDisplayTextBuffer)
 {
     Idle_DebugDisplayTextBuffer();
     DrawDistanceChanger();
+}
+DECL_HOOKv(DrawDistance_SetCamFarClip, RwCamera* cam, float dist)
+{
+    DrawDistance_SetCamFarClip(cam, fNewFarClip);
 }
 DECL_HOOKv(LoadTimeObject_SetTexDictionary, CBaseModelInfo *mi, void *txdStore, const char *modelCdName)
 {
@@ -860,6 +898,9 @@ extern "C" void OnModLoad()
     SET_TO(CurrentTimeHours, aml->GetSym(hGTASA, "_ZN6CClock18ms_nGameClockHoursE"));
     SET_TO(CurrentTimeMinutes, aml->GetSym(hGTASA, "_ZN6CClock20ms_nGameClockMinutesE"));
     SET_TO(m_snTimeInMillisecondsPauseMode, aml->GetSym(hGTASA, "_ZN6CTimer31m_snTimeInMillisecondsPauseModeE"));
+    SET_TO(UnderWaterness, aml->GetSym(hGTASA, "_ZN8CWeather14UnderWaternessE"));
+    SET_TO(game_FPS, aml->GetSym(hGTASA, "_ZN6CTimer8game_FPSE"));
+    SET_TO(ms_fFarClipPlane, aml->GetSym(hGTASA, "_ZN9CRenderer16ms_fFarClipPlaneE"));
 
     SET_TO(GetIsTimeInRange, aml->GetSym(hGTASA, "_ZN6CClock16GetIsTimeInRangeEhh"));
     SET_TO(FindGroundZFor3DCoord, aml->GetSym(hGTASA, "_ZN6CWorld21FindGroundZFor3DCoordEfffPbPP7CEntity"));
@@ -875,6 +916,7 @@ extern "C" void OnModLoad()
     SET_TO(FlushSpriteBuffer, aml->GetSym(hGTASA, "_ZN7CSprite17FlushSpriteBufferEv"));
     SET_TO(CalcScreenCoors, aml->GetSym(hGTASA, "_ZN7CSprite15CalcScreenCoorsERK5RwV3dPS0_PfS4_bb"));
     SET_TO(RenderBufferedOneXLUSprite_Rotate_Aspect, aml->GetSym(hGTASA, "_ZN7CSprite40RenderBufferedOneXLUSprite_Rotate_AspectEfffffhhhsffh"));
+    SET_TO(FindPlayerPed, aml->GetSym(hGTASA, "_Z13FindPlayerPedi"));
 
     // Hooks
     HOOKBLX(LoadLevel_LoadingScreen, pGTASA + 0x466AB2 + 0x1);
@@ -885,7 +927,7 @@ extern "C" void OnModLoad()
     // Patches
     aml->Write(pGTASA + 0x362EC8, "\xC4\xF2\x41\x40", 4); // 50.0 -> 576.0 (instead of 550.0 on PC)
     aml->Write(pGTASA + 0x5A3644, "\xBA\xF5\x61\x5F", 4); // Sun reflections
-    CoronaFarClip_BackTo = pGTASA + 0x5A443C + 0x1;
+    //CoronaFarClip_BackTo = pGTASA + 0x5A443C + 0x1;
     //aml->Redirect(pGTASA + 0x5A4430 + 0x1, (uintptr_t)CoronaFarClip_Inject); // brokey
 
     // P2DFX Init
@@ -900,6 +942,17 @@ extern "C" void OnModLoad()
     if (bEnableDrawDistanceChanger) // incomplete
     {
         HOOKBLX(Idle_DebugDisplayTextBuffer, pGTASA + 0x3F6C7C + 0x1);
+
+        // "ms_fFarClipPlane = x" part
+        aml->PlaceNOP(pGTASA + 0x40EEBE + 0x1, 1);
+        aml->PlaceNOP(pGTASA + 0x40F8AE + 0x1, 1);
+        aml->PlaceNOP(pGTASA + 0x411BA4 + 0x1, 1);
+        aml->PlaceNOP(pGTASA + 0x41220C + 0x1, 1);
+
+        // timecycle farclip part
+        HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F6B32 + 0x1); // Idle
+        HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F5E12 + 0x1); // NewTileRenderCB
+        HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F5E36 + 0x1); // NewTileRenderCB
     }
     if (fStaticSunSize)
     {
@@ -948,11 +1001,11 @@ extern "C" void OnModLoad()
         {
             RegisterLODCorona = &RegisterFestiveCorona;
 
-            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A49A4);
-            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A44E8);
-            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A4B88);
-            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC6C2);
-            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC7F0);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A49A4 + 0x1);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A44E8 + 0x1);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A4B88 + 0x1);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC6C2 + 0x1);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC7F0 + 0x1);
         }
     }
 }
