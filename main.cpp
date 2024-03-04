@@ -29,7 +29,7 @@ class CLODRegisteredCorona
 public:
     CVector     Coordinates;            // Where is it exactly.
     uint32_t    Identifier;             // Should be unique for each corona. Address or something (0 = empty)
-    RwTexture*	pTex;                   // Pointer to the actual texture to be rendered
+    RwTexture*    pTex;                   // Pointer to the actual texture to be rendered
     float       Size;                   // How big is this fellow
     float       NormalAngle;            // Is corona normal (if relevant) facing the camera?
     float       Range;                  // How far away is this guy still visible
@@ -55,8 +55,8 @@ public:
     CEntity*    pEntityAttachedTo;
 
     CLODRegisteredCorona()
-		: Identifier(0), pEntityAttachedTo(nullptr)
-	{}
+        : Identifier(0), pEntityAttachedTo(nullptr)
+    {}
     void Update()
     {
         if (!RegisteredThisFrame)
@@ -208,7 +208,7 @@ void RenderBufferedLODLights()
             if(CalcScreenCoors(&vecCoronaCoords, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true))
             {
                 LODLightsCoronas[i].OffScreen = !(vecTransformedCoords.x >= 0.0 && vecTransformedCoords.x <= nWidth &&
-						vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
+                        vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
 
                 if (LODLightsCoronas[i].Intensity > 0 && vecTransformedCoords.z <= LODLightsCoronas[i].Range)
                 {
@@ -627,7 +627,7 @@ DECL_HOOKv(RenderEffects_MovingThings)
     }
     if(bRenderSearchlightEffects)
     {
-        
+        CSearchLights::RenderSearchLightsSA();
     }
 }
 DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
@@ -643,7 +643,22 @@ DECL_HOOKv(RegisterCorona_FarClip, int id, CEntity *entity, uint8_t r, uint8_t g
 }
 DECL_HOOKv(GameInit2_CranesInit)
 {
+    // CLodLights::Init
+    if (LODLightsCoronas.size() != numCoronas)
+    {
+        LODLightsLinkedList.resize(numCoronas);
+        LODLightsCoronas.resize(numCoronas);
 
+        // Initialise the lists
+        LODLightsFreeList.Init();
+        LODLightsUsedList.Init();
+
+        for (size_t i = 0; i < LODLightsLinkedList.size(); i++)
+        {
+            LODLightsLinkedList[i].Add(&LODLightsFreeList);
+            LODLightsLinkedList[i].SetEntry(&LODLightsCoronas[i]);
+        }
+    }
 }
 DECL_HOOKv(GameInit_LoadingScreen, const char *a1, const char *a2, const char *a3)
 {
@@ -928,7 +943,7 @@ extern "C" void OnModLoad()
     aml->Write(pGTASA + 0x362EC8, "\xC4\xF2\x41\x40", 4); // 50.0 -> 576.0 (instead of 550.0 on PC)
     aml->Write(pGTASA + 0x5A3644, "\xBA\xF5\x61\x5F", 4); // Sun reflections
     //CoronaFarClip_BackTo = pGTASA + 0x5A443C + 0x1;
-    //aml->Redirect(pGTASA + 0x5A4430 + 0x1, (uintptr_t)CoronaFarClip_Inject); // brokey
+    //aml->Redirect(pGTASA + 0x5A4430 + 0x1, (uintptr_t)CoronaFarClip_Inject); // brokey, replacement above
 
     // P2DFX Init
     RegisterLODCorona = &RegisterNormalCorona;
@@ -939,7 +954,7 @@ extern "C" void OnModLoad()
         HOOKPLT(LoadObjectInstance, pGTASA + 0x675E6C);
         HOOKBLX(GameProcess_BridgesUpdate, pGTASA + 0x3F4266 + 0x1);
     }
-    if (bEnableDrawDistanceChanger) // incomplete
+    if (bEnableDrawDistanceChanger)
     {
         HOOKBLX(Idle_DebugDisplayTextBuffer, pGTASA + 0x3F6C7C + 0x1);
 
@@ -979,7 +994,8 @@ extern "C" void OnModLoad()
         HOOKBLX(LoadObject_GetModelCDName, pGTASA + 0x469506 + 0x1);
         if (fGenericObjectsDrawDistance || fAllNormalObjectsDrawDistance || fVegetationDrawDistance)
         {
-            // usage of fMaxDrawDistanceForNormalObjects, doing it in funcs manually (SetMaxDrawDistanceForNormalObjects)
+            // usage of fMaxDrawDistanceForNormalObjects,
+            //   doing it in funcs manually (SetMaxDrawDistanceForNormalObjects)
         }
     }
     if (bLoadAllBinaryIPLs)
