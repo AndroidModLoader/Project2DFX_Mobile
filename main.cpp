@@ -739,6 +739,19 @@ DECL_HOOKv(GameInit_StartTestScript)
         });
     }
 }
+DECL_HOOKv(CoronasRegisterFestiveCoronaForEntity, unsigned int nID, CEntity* entity, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, RwTexture* pTex, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
+{
+    auto it = LODLightsFestiveLights.find(nID);
+    if (it != LODLightsFestiveLights.end())
+    {
+        CoronasRegisterFestiveCoronaForEntity(nID, entity, it->second.r, it->second.g, it->second.b, A, Position, Size, Range, pTex, flare, enableReflection, checkObstacles, notUsed, angle, longDistance, nearClip, fadeState, fadeSpeed, onlyFromBelow, reflectionDelay);
+    }
+    else
+    {
+        LODLightsFestiveLights[nID] = CRGBA(rand() % 256, rand() % 256, rand() % 256, 0);
+        CoronasRegisterFestiveCoronaForEntity(nID, entity, R, G, B, A, Position, Size, Range, pTex, flare, enableReflection, checkObstacles, notUsed, angle, longDistance, nearClip, fadeState, fadeSpeed, onlyFromBelow, reflectionDelay);
+    }
+}
 
 // Patches
 uintptr_t CoronaFarClip_BackTo, LoadScene_BackTo;
@@ -913,7 +926,7 @@ extern "C" void OnModLoad()
         HOOKBLX(LoadObject_GetModelCDName, pGTASA + 0x469506 + 0x1);
         if (fGenericObjectsDrawDistance || fAllNormalObjectsDrawDistance || fVegetationDrawDistance)
         {
-            // usage of fMaxDrawDistanceForNormalObjects, doing it in funcs manually
+            // usage of fMaxDrawDistanceForNormalObjects, doing it in funcs manually (SetMaxDrawDistanceForNormalObjects)
         }
     }
     if (bLoadAllBinaryIPLs)
@@ -934,10 +947,12 @@ extern "C" void OnModLoad()
         if (bFestiveLightsAlways || (date->tm_mon == 0 && date->tm_mday <= 1) || (date->tm_mon == 11 && date->tm_mday >= 31))
         {
             RegisterLODCorona = &RegisterFestiveCorona;
-            //CCoronasRegisterFestiveCoronaForEntity<(0x6FCA80)>();
-            //CCoronasRegisterFestiveCoronaForEntity<(0x6FD02E)>();
-            //CCoronasRegisterFestiveCoronaForEntity<(0x5363A8)>();
-            //CCoronasRegisterFestiveCoronaForEntity<(0x536511)>();
+
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A49A4);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A44E8);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A4B88);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC6C2);
+            HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC7F0);
         }
     }
 }
