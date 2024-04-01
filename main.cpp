@@ -174,7 +174,7 @@ bool                bEnableDrawDistanceChanger;
 float               fMinDrawDistanceOnTheGround, fFactor1, fFactor2, fStaticSunSize;
 bool                bAdaptiveDrawDistanceEnabled;
 int                 nMinFPSValue, nMaxFPSValue;
-float               fNewFarClip, fMaxPossibleDrawDistance;
+float               fNewFarClip = 500.0f, fMaxPossibleDrawDistance;
 float               fMaxDrawDistanceForNormalObjects = 300.0f, fTimedObjectsDrawDistance, fNeonsDrawDistance, fLODObjectsDrawDistance;
 float               fGenericObjectsDrawDistance, fAllNormalObjectsDrawDistance, fVegetationDrawDistance;
 bool                bLoadAllBinaryIPLs, bPreloadLODs;
@@ -749,8 +749,11 @@ DECL_HOOKb(GenericLoad_IplStoreLoad)
                                                        "LAHILLS_STREAM1", "LAHILLS_STREAM2", "LAHILLS_STREAM3", "LAHILLS_STREAM4", "LAN_STREAM0", "LAN_STREAM1", "LAN_STREAM2", "LAN2_STREAM0",
                                                        "LAN2_STREAM1", "LAN2_STREAM2", "LAN2_STREAM3", "LAS_STREAM0", "LAS_STREAM1", "LAS_STREAM2", "LAS_STREAM3", "LAS_STREAM4", "LAS_STREAM5",
                                                        "LAS2_STREAM0", "LAS2_STREAM1", "LAS2_STREAM2", "LAS2_STREAM3", "LAS2_STREAM4", "LAW_STREAM0", "LAW_STREAM1", "LAW_STREAM2", "LAW_STREAM3", "LAW_STREAM4",
+
                                                        "LAW_STREAM5", "LAW2_STREAM0", "LAW2_STREAM1", "LAW2_STREAM2", "LAW2_STREAM3", "LAW2_STREAM4", "LAWN_STREAM0", "LAWN_STREAM1", "LAWN_STREAM2", "LAWN_STREAM3",
+
                                                        "COUNTN2_STREAM0", "COUNTN2_STREAM1", "COUNTN2_STREAM2", "COUNTN2_STREAM3", "COUNTN2_STREAM4", "COUNTN2_STREAM5", "COUNTN2_STREAM6", "COUNTN2_STREAM7", "COUNTN2_STREAM8",
+
                                                        "COUNTRYE_STREAM0", "COUNTRYE_STREAM1", "COUNTRYE_STREAM2", "COUNTRYE_STREAM3", "COUNTRYE_STREAM4", "COUNTRYE_STREAM5", "COUNTRYE_STREAM6", "COUNTRYE_STREAM7", "COUNTRYE_STREAM8",
                                                        "COUNTRYE_STREAM9", "COUNTRYN_STREAM0", "COUNTRYN_STREAM1", "COUNTRYN_STREAM2", "COUNTRYN_STREAM3", "COUNTRYS_STREAM0", "COUNTRYS_STREAM1", "COUNTRYS_STREAM2", "COUNTRYS_STREAM3", "COUNTRYS_STREAM4",
                                                        "COUNTRYW_STREAM0", "COUNTRYW_STREAM1", "COUNTRYW_STREAM2", "COUNTRYW_STREAM3", "COUNTRYW_STREAM4", "COUNTRYW_STREAM5", "COUNTRYW_STREAM6", "COUNTRYW_STREAM7", "COUNTRYW_STREAM8", "SFE_STREAM0",
@@ -761,10 +764,12 @@ DECL_HOOKb(GenericLoad_IplStoreLoad)
                                                        "VEGASS_STREAM2", "VEGASS_STREAM3", "VEGASS_STREAM4", "VEGASS_STREAM5", "VEGASW_STREAM0", "VEGASW_STREAM1", "VEGASW_STREAM2", "VEGASW_STREAM3", "VEGASW_STREAM4", "VEGASW_STREAM5", "VEGASW_STREAM6",
                                                        "VEGASW_STREAM7", "VEGASW_STREAM8", "VEGASW_STREAM9"
                                                      };
+
     aml->Write8(pGTASA + 0x281FE4, 0x00); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 0;
     for (auto it = IPLStreamNames.cbegin(); it != IPLStreamNames.cend(); it++)
     {
-        RequestIplAndIgnore(FindIplSlot(it->c_str()));
+        int iplSlot = FindIplSlot(it->c_str());
+        if (iplSlot >= 0) RequestIplAndIgnore(iplSlot);
     }
     aml->Write8(pGTASA + 0x281FE4, 0x01); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 1;
 
@@ -845,7 +850,7 @@ __attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
 }
 
 /// Main
-extern "C" void OnModLoad()
+extern "C" void OnAllModsLoaded()
 {
     logger->SetTag("Project2DFX");
     pGTASA = aml->GetLib("libGTASA.so");
