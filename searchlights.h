@@ -35,7 +35,7 @@ public:
 class CSearchLights
 {
 public:
-    static void DrawCustomSpotLightSA(RwV3d StartPoint, RwV3d EndPoint, float TargetRadius, float baseRadius, float slColorFactor1, char slColorFactor2, float slAlpha = 1.0f);
+    static void DrawCustomSpotLightSA(CVector StartPoint, CVector EndPoint, float TargetRadius, float baseRadius, float slColorFactor1, char slColorFactor2, float slAlpha = 1.0f);
     static void RenderSearchLightsSA();
     static bool IsModelALamppost(uint16_t nModelId);
     static void RegisterLamppost(CEntity* pObj);

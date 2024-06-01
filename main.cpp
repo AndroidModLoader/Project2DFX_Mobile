@@ -143,6 +143,9 @@ void                (*FlushSpriteBuffer)();
 bool                (*CalcScreenCoors)(CVector*, CVector*, float*, float*, bool, bool);
 void                (*RenderBufferedOneXLUSprite_Rotate_Aspect)(float,float,float,float,float,uint8_t,uint8_t,uint8_t,short,float,float,uint8_t);
 CPlayerPed*         (*FindPlayerPed)(int playerId);
+void                (*Pre_SearchLightCone)();
+void                (*Post_SearchLightCone)();
+
 // Vars
 std::map<unsigned int, CLODLightsLinkedListNode*> LODLightsUsedMap;
 CLODLightsLinkedListNode LODLightsFreeList, LODLightsUsedList;
@@ -951,6 +954,8 @@ extern "C" void OnAllModsLoaded()
     SET_TO(CalcScreenCoors, aml->GetSym(hGTASA, "_ZN7CSprite15CalcScreenCoorsERK5RwV3dPS0_PfS4_bb"));
     SET_TO(RenderBufferedOneXLUSprite_Rotate_Aspect, aml->GetSym(hGTASA, "_ZN7CSprite40RenderBufferedOneXLUSprite_Rotate_AspectEfffffhhhsffh"));
     SET_TO(FindPlayerPed, aml->GetSym(hGTASA, "_Z13FindPlayerPedi"));
+    SET_TO(Pre_SearchLightCone, aml->GetSym(hGTASA, "_ZN5CHeli19Pre_SearchLightConeEv"));
+    SET_TO(Post_SearchLightCone, aml->GetSym(hGTASA, "_ZN5CHeli20Post_SearchLightConeEv"));
 
     // Hooks
   #ifdef AML32
