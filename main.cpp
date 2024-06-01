@@ -103,9 +103,9 @@ public:
 
 // Init
 MYMOD(net.thirteenag.rusjj.gtasa.2dfx, Project 2DFX, 1.0, ThirteenAG & RusJJ)
-//NEEDGAME(com.rockstargames.gtasa)
+NEEDGAME(com.rockstargames.gtasa)
 BEGIN_DEPLIST()
-    ADD_DEPENDENCY_VER(net.rusjj.aml, 1.2.1)
+    ADD_DEPENDENCY_VER(net.rusjj.aml, 1.2.2)
 END_DEPLIST()
 
 Config*             cfg;
@@ -198,7 +198,7 @@ void RenderBufferedLODLights()
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
 
     int siz = LODLightsCoronas.size();
-    for (size_t i = 0; i < siz; i++)
+    for (size_t i = 0; i < siz; ++i)
     {
         if (LODLightsCoronas[i].Identifier && LODLightsCoronas[i].Intensity > 0)
         {
@@ -318,7 +318,7 @@ void RegisterCustomCoronas()
     if(gpCustomCoronaTexture) gpCoronaTexture[1] = gpCustomCoronaTexture;
 
     auto itEnd = pFileContent->upper_bound(PackKey(nModelID, 0xFFFF));
-    for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; it++)
+    for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; ++it)
     {
         m_pLampposts->push_back(CLamppostInfo(it->second.vecPos, it->second.colour, it->second.fCustomSizeMult, it->second.nCoronaShowMode, it->second.nNoDistance, it->second.nDrawSearchlight, 0.0f));
     }
@@ -489,7 +489,7 @@ void RegisterLODLights()
         else bAlpha = (uint8_t)((-15.0f / 16.0f)*nTime + 424.0f);
 
         CVector* pCamPos = &TheCamera->GetPosition();
-        for (auto it = m_pLampposts->cbegin(); it != m_pLampposts->cend(); it++)
+        for (auto it = m_pLampposts->cbegin(); it != m_pLampposts->cend(); ++it)
         {
             if ((it->vecPos.z >= -15.0f) && (it->vecPos.z <= 1030.0f))
             {
@@ -505,7 +505,7 @@ void RegisterLODLights()
                     {
                         if (!it->nCoronaShowMode)
                         {
-                            RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                             if (bRenderStaticShadowsForLODs)
                             {
                                 // StoreStaticShadow
@@ -519,14 +519,14 @@ void RegisterLODLights()
 
                             (blinking > 1.0f) ? blinking = 1.0f : (blinking < 0.0f) ? blinking = 0.0f : 0.0f;
 
-                            RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, blinking * (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, blinking * (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                         }
                     }
                     else
                     {
                         if ((it->colour.r >= 250 && it->colour.g >= 100 && it->colour.b <= 100) && ((curMin == 9 || curMin == 19 || curMin == 29 || curMin == 39 || curMin == 49 || curMin == 59))) //yellow
                         {
-                            RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                         }
                         else
                         {
@@ -534,22 +534,22 @@ void RegisterLODLights()
                             {
                                 if ((it->colour.r >= 250 && it->colour.g < 100 && it->colour.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
                                 {
-                                    RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                                 else if ((it->colour.r == 0 && it->colour.g >= 250 && it->colour.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
                                 {
-                                    RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                             }
                             else
                             {
                                 if ((it->colour.r == 0 && it->colour.g >= 250 && it->colour.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
                                 {
-                                    RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                                 else if ((it->colour.r >= 250 && it->colour.g < 100 && it->colour.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
                                 {
-                                    RegisterLODCorona(reinterpret_cast<unsigned int>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                             }
                         }
@@ -636,7 +636,7 @@ DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
     if(ourEntity && bCatchLamppostsNow && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex())) CSearchLights::RegisterLamppost(ourEntity);
     return ourEntity;
 }
-DECL_HOOKv(RegisterCorona_FarClip, int id, CEntity *entity, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha, CVector *pos, float radius, float farClip, void *texture, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
+DECL_HOOKv(RegisterCorona_FarClip, uintptr_t id, CEntity *entity, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha, CVector *pos, float radius, float farClip, void *texture, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
 {
     //                                                              \/\/\/\/
     RegisterCorona_FarClip(id, entity, r, g, b, alpha, pos, radius, 3000.0f, texture, flare, enableReflection, checkObstacles, notUsed, angle, longDistance, nearClip, fadeState, fadeSpeed, onlyFromBelow, reflectionDelay);
@@ -653,7 +653,7 @@ DECL_HOOKv(GameInit2_CranesInit)
         LODLightsFreeList.Init();
         LODLightsUsedList.Init();
 
-        for (size_t i = 0; i < LODLightsLinkedList.size(); i++)
+        for (size_t i = 0; i < LODLightsLinkedList.size(); ++i)
         {
             LODLightsLinkedList[i].Add(&LODLightsFreeList);
             LODLightsLinkedList[i].SetEntry(&LODLightsCoronas[i]);
@@ -695,13 +695,13 @@ CBaseModelInfo* drawdistHackMi = NULL;
 DECL_HOOK(CDamageAtomicModelInfo*, LoadObject_AddDamageAtomicModel, int modelId)
 {
     CDamageAtomicModelInfo* mi = LoadObject_AddDamageAtomicModel(modelId);
-    drawdistHackMi = mi;
+    drawdistHackMi = (CBaseModelInfo*)mi;
     return mi;
 }
 DECL_HOOK(CAtomicModelInfo*, LoadObject_AddAtomicModel, int modelId)
 {
     CAtomicModelInfo* mi = LoadObject_AddAtomicModel(modelId);
-    drawdistHackMi = mi;
+    drawdistHackMi = (CBaseModelInfo*)mi;
     return mi;
 }
 DECL_HOOK(const char*, LoadObject_GetModelCDName, int modelId)
@@ -766,7 +766,7 @@ DECL_HOOKb(GenericLoad_IplStoreLoad)
                                                      };
 
     aml->Write8(pGTASA + 0x281FE4, 0x00); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 0;
-    for (auto it = IPLStreamNames.cbegin(); it != IPLStreamNames.cend(); it++)
+    for (auto it = IPLStreamNames.cbegin(); it != IPLStreamNames.cend(); ++it)
     {
         int iplSlot = FindIplSlot(it->c_str());
         if (iplSlot >= 0) RequestIplAndIgnore(iplSlot);
@@ -787,7 +787,7 @@ DECL_HOOKv(GameInit_StartTestScript)
     std::for_each(lods_id.begin(), std::unique(lods_id.begin(), lods_id.end()), [](uint16_t id) { RequestModel(id, eStreamingFlags::STREAMING_GAME_REQUIRED); });
     LoadAllRequestedModels(false);
 
-    // i just did it.
+    // i just did it (created this line, it's never called)
     // Instantiate all lod entities RwObject
     if (false)
     {
@@ -823,6 +823,7 @@ extern "C" uintptr_t LoadScene_Patch(CEntity *entity)
     if(entity && entity->m_pLod) lods.push_back(entity->m_pLod);
     return LoadScene_BackTo;
 }
+#ifdef AML32
 __attribute__((optnone)) __attribute__((naked)) void CoronaFarClip_Inject(void)
 {
     asm volatile(
@@ -848,6 +849,19 @@ __attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
         "LDRB.W R0, [R6, #0x38]\n" // org
         "MOV PC, R11");
 }
+#else
+__attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
+{
+    asm volatile(
+        "LDR X8, [X27, X8, LSL#3]\n" // org
+        "LDR S0, [X8, #0x38]\n" // org
+        "FMUL S0, S0, S1\n" // org
+        "FCMP S0, S8\n" // org
+        "MOV X0, X23\n"
+        "BL LoadScene_Patch\n"
+        "BR X0");
+}
+#endif
 
 /// Main
 extern "C" void OnAllModsLoaded()
@@ -906,7 +920,7 @@ extern "C" void OnAllModsLoaded()
     bFestiveLightsAlways = cfg->GetBool("bFestiveLightsAlways", 0, "Misc");
 
     // Getters
-    SET_TO(ms_modelInfoPtrs, *(uintptr_t*)(pGTASA + 0x6796D4));
+    SET_TO(ms_modelInfoPtrs, *(uintptr_t*)(pGTASA + BYBIT(0x6796D4, 0x850DB8)));
     SET_TO(nActiveInterior, aml->GetSym(hGTASA, "_ZN5CGame8currAreaE"));
     SET_TO(flWeatherFoggyness, aml->GetSym(hGTASA, "_ZN8CWeather9FoggynessE"));
     SET_TO(ms_fTimeStep, aml->GetSym(hGTASA, "_ZN6CTimer12ms_fTimeStepE"));
@@ -925,8 +939,8 @@ extern "C" void OnAllModsLoaded()
     SET_TO(GetIsTimeInRange, aml->GetSym(hGTASA, "_ZN6CClock16GetIsTimeInRangeEhh"));
     SET_TO(FindGroundZFor3DCoord, aml->GetSym(hGTASA, "_ZN6CWorld21FindGroundZFor3DCoordEfffPbPP7CEntity"));
     SET_TO(OpenFile, aml->GetSym(hGTASA, "_ZN8CFileMgr8OpenFileEPKcS1_"));
-    SET_TO(CloseFile, aml->GetSym(hGTASA, "_ZN8CFileMgr9CloseFileEj"));
-    SET_TO(LoadLine, aml->GetSym(hGTASA, "_ZN11CFileLoader8LoadLineEj"));
+    SET_TO(CloseFile, aml->GetSym(hGTASA, BYBIT("_ZN8CFileMgr9CloseFileEj", "_ZN8CFileMgr9CloseFileEy")));
+    SET_TO(LoadLine, aml->GetSym(hGTASA, BYBIT("_ZN11CFileLoader8LoadLineEj", "_ZN11CFileLoader8LoadLineEy")));
     SET_TO(GetModelInfoUInt16, aml->GetSym(hGTASA, "_ZN10CModelInfo18GetModelInfoUInt16EPKcPt"));
     SET_TO(FindIplSlot, aml->GetSym(hGTASA, "_ZN9CIplStore11FindIplSlotEPKc"));
     SET_TO(RequestIplAndIgnore, aml->GetSym(hGTASA, "_ZN9CIplStore19RequestIplAndIgnoreEi"));
@@ -939,28 +953,49 @@ extern "C" void OnAllModsLoaded()
     SET_TO(FindPlayerPed, aml->GetSym(hGTASA, "_Z13FindPlayerPedi"));
 
     // Hooks
+  #ifdef AML32
     HOOKBLX(LoadLevel_LoadingScreen, pGTASA + 0x466AB2 + 0x1);
     HOOKBLX(RenderEffects_MovingThings, pGTASA + 0x3F6380 + 0x1);
     HOOKBLX(RegisterCorona_FarClip, pGTASA + 0x5A44E8 + 0x1); // CoronaFarClip_Inject replacement
     HOOKBLX(GameInit2_CranesInit, pGTASA + 0x473022 + 0x1);
+  #else
+    HOOKBL(LoadLevel_LoadingScreen, pGTASA + 0x551E20);
+    HOOKBL(RenderEffects_MovingThings, pGTASA + 0x4D88FC);
+    HOOKBL(RegisterCorona_FarClip, pGTASA + 0x6C8438); // CoronaFarClip_Inject replacement
+    HOOKBL(GameInit2_CranesInit, pGTASA + 0x55F748);
+  #endif
 
     // Patches
-    aml->Write(pGTASA + 0x362EC8, "\xC4\xF2\x41\x40", 4); // 50.0 -> 576.0 (instead of 550.0 on PC)
-    aml->Write(pGTASA + 0x5A3644, "\xBA\xF5\x61\x5F", 4); // Sun reflections
+  #ifdef AML32
+    aml->Write(pGTASA + 0x362EC8, "\xC4\xF2\x09\x40", 4); // 50.0 -> 548.0 (instead of 550.0 on PC)
+    if(*(uint32_t*)(pGTASA + 0x5A3644) == 0x6FB4F5BA) aml->Write(pGTASA + 0x5A3644, "\xBA\xF5\x61\x5F", 4); // Sun reflections
     //CoronaFarClip_BackTo = pGTASA + 0x5A443C + 0x1;
     //aml->Redirect(pGTASA + 0x5A4430 + 0x1, (uintptr_t)CoronaFarClip_Inject); // brokey, replacement above
+  #else
+    aml->Write32(pGTASA + 0x432DF0, 0x90001868); // 50.0 -> 550.0 (1)
+    aml->Write32(pGTASA + 0x432DF8, 0xBD4B8508); // 50.0 -> 550.0 (2)
+    if(*(uint32_t*)(pGTASA + 0x6C6E80) == 0x7100B75F) aml->Write32(pGTASA + 0x6C6E80, 0x7106575F); // Sun reflections
+  #endif
 
     // P2DFX Init
     RegisterLODCorona = &RegisterNormalCorona;
     if (bRenderLodLights)
     {
         // CLODLights::Inject();
+      #ifdef AML32
         HOOKBLX(GameInit_LoadingScreen, pGTASA + 0x3F3784 + 0x1);
         HOOKPLT(LoadObjectInstance, pGTASA + 0x675E6C);
         HOOKBLX(GameProcess_BridgesUpdate, pGTASA + 0x3F4266 + 0x1);
+      #else
+        HOOKBL(GameInit_LoadingScreen, pGTASA + 0x4D5ABC);
+        HOOKPLT(LoadObjectInstance, pGTASA + 0x849D58);
+        HOOKBL(LoadObjectInstance, pGTASA + 0x4D20D4);
+        HOOKBL(GameProcess_BridgesUpdate, pGTASA + 0x4D6638);
+      #endif
     }
     if (bEnableDrawDistanceChanger)
     {
+      #ifdef AML32
         HOOKBLX(Idle_DebugDisplayTextBuffer, pGTASA + 0x3F6C7C + 0x1);
 
         // "ms_fFarClipPlane = x" part
@@ -973,6 +1008,20 @@ extern "C" void OnAllModsLoaded()
         HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F6B32 + 0x1); // Idle
         HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F5E12 + 0x1); // NewTileRenderCB
         HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F5E36 + 0x1); // NewTileRenderCB
+      #else
+        HOOKBL(Idle_DebugDisplayTextBuffer, pGTASA + 0x4D9248);
+
+        // "ms_fFarClipPlane = x" part
+        aml->PlaceNOP(pGTASA + 0x4F4374, 1);
+        aml->PlaceNOP(pGTASA + 0x4F4CA4, 1);
+        aml->PlaceNOP(pGTASA + 0x4F70E4, 1);
+        aml->PlaceNOP(pGTASA + 0x4F7794, 1);
+
+        // timecycle farclip part
+        HOOKBL(DrawDistance_SetCamFarClip, pGTASA + 0x4D9048); // Idle
+        HOOKBL(DrawDistance_SetCamFarClip, pGTASA + 0x4D83C0); // NewTileRenderCB
+        HOOKBL(DrawDistance_SetCamFarClip, pGTASA + 0x4D83EC); // NewTileRenderCB
+      #endif
     }
     if (fStaticSunSize)
     {
@@ -990,13 +1039,23 @@ extern "C" void OnAllModsLoaded()
     }
     if (fTimedObjectsDrawDistance || fNeonsDrawDistance)
     {
+      #ifdef AML32
         HOOKBLX(LoadTimeObject_SetTexDictionary, pGTASA + 0x4696A2 + 0x1);
+      #else
+        HOOKBL(LoadTimeObject_SetTexDictionary, pGTASA + 0x554B20);
+      #endif
     }
     if (fLODObjectsDrawDistance || fGenericObjectsDrawDistance || fAllNormalObjectsDrawDistance || fVegetationDrawDistance)
     {
+      #ifdef AML32
         HOOKBLX(LoadObject_AddDamageAtomicModel, pGTASA + 0x4694E4 + 0x1);
         HOOKBLX(LoadObject_AddAtomicModel, pGTASA + 0x4694DE + 0x1);
         HOOKBLX(LoadObject_GetModelCDName, pGTASA + 0x469506 + 0x1);
+      #else
+        HOOKBL(LoadObject_AddDamageAtomicModel, pGTASA + 0x5548FC);
+        HOOKBL(LoadObject_AddAtomicModel, pGTASA + 0x5548F4);
+        HOOKBL(LoadObject_GetModelCDName, pGTASA + 0x554928);
+      #endif
         if (fGenericObjectsDrawDistance || fAllNormalObjectsDrawDistance || fVegetationDrawDistance)
         {
             // usage of fMaxDrawDistanceForNormalObjects,
@@ -1005,13 +1064,23 @@ extern "C" void OnAllModsLoaded()
     }
     if (bLoadAllBinaryIPLs)
     {
+      #ifdef AML32
         HOOKBLX(GenericLoad_IplStoreLoad, pGTASA + 0x482E18 + 0x1);
+      #else
+        HOOKBL(GenericLoad_IplStoreLoad, pGTASA + 0x574CE8);
+      #endif
     }
     if (bPreloadLODs)
     {
+      #ifdef AML32
         LoadScene_BackTo = pGTASA + 0x4691A8 + 0x1;
         aml->Redirect(pGTASA + 0x4691A0 + 0x1, (uintptr_t)LoadScene_Inject);
         HOOKBLX(GameInit_StartTestScript, pGTASA + 0x3F3788 + 0x1);
+      #else
+        LoadScene_BackTo = pGTASA + 0x5544EC;
+        aml->Redirect(pGTASA + 0x5544DC, (uintptr_t)LoadScene_Inject);
+        HOOKBL(GameInit_StartTestScript, pGTASA + 0x4D5AC0);
+      #endif
     }
     if (bFestiveLights)
     {
@@ -1022,11 +1091,18 @@ extern "C" void OnAllModsLoaded()
         {
             RegisterLODCorona = &RegisterFestiveCorona;
 
+          #ifdef AML32
             HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A49A4 + 0x1);
             HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A44E8 + 0x1);
             HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x5A4B88 + 0x1);
             HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC6C2 + 0x1);
             HOOKBLX(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x3EC7F0 + 0x1);
+          #else
+            HOOKBL(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x6C7ED8);
+            HOOKBL(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x6C80E8);
+            HOOKBL(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x6C8438);
+            HOOKBL(CoronasRegisterFestiveCoronaForEntity, pGTASA + 0x4CC490);
+          #endif
         }
     }
 }
