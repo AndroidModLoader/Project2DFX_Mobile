@@ -255,7 +255,7 @@ void RenderBufferedLODLights()
                         
                         if (CalcScreenCoors(&vecCoronaCoordsAfterPull, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true))
                         {
-                            RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, LODLightsCoronas[i].Size * fComputedHeight, LODLightsCoronas[i].Size * fComputedHeight * fColourFogMult, LODLightsCoronas[i].Red / fColourFogMult, LODLightsCoronas[i].Green / fColourFogMult, LODLightsCoronas[i].Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 0xFF);
+                            RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, LODLightsCoronas[i].Size * fComputedHeight, LODLightsCoronas[i].Size * fComputedHeight * fColourFogMult, LODLightsCoronas[i].Red / fColourFogMult, LODLightsCoronas[i].Green / fColourFogMult, LODLightsCoronas[i].Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 255);
                         }
                     }
                 }
@@ -266,6 +266,7 @@ void RenderBufferedLODLights()
             }
         }
     }
+    FlushSpriteBuffer();
 }
 void LoadDatFile()
 {
