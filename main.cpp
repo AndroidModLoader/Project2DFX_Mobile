@@ -184,6 +184,10 @@ bool                bLoadAllBinaryIPLs, bPreloadLODs;
 float               fDrawDistance;
 bool                bRandomExplosionEffects, bReplaceSmokeTrailWithBulletTrail, bFestiveLights, bFestiveLightsAlways;
 
+#ifdef AML64
+    float           *MaxObjectsDrawDistance;
+#endif
+
 // Funcs
 void RenderBufferedLODLights()
 {
@@ -603,7 +607,8 @@ void SetMaxDrawDistanceForNormalObjects(float v)
     if(fMaxDrawDistanceForNormalObjects < v)
     {
         fMaxDrawDistanceForNormalObjects = v;
-
+        
+      #ifdef AML32
         aml->WriteFloat(pGTASA + 0x4114E8,  v);
         aml->WriteFloat(pGTASA + 0x40F3B4,  v);
         aml->WriteFloat(pGTASA + 0x40F370,  v);
@@ -612,6 +617,9 @@ void SetMaxDrawDistanceForNormalObjects(float v)
         aml->WriteFloat(pGTASA + 0x40F37C,  v);
         aml->WriteFloat(pGTASA + 0x4692F8,  v);
         aml->WriteFloat(pGTASA + 0x4114F4, -v);
+      #else
+        *MaxObjectsDrawDistance = v;
+      #endif
     }
 }
 
@@ -968,6 +976,8 @@ extern "C" void OnAllModsLoaded()
     HOOKBL(RenderEffects_MovingThings, pGTASA + 0x4D88FC);
     HOOKBL(RegisterCorona_FarClip, pGTASA + 0x6C8438); // CoronaFarClip_Inject replacement
     HOOKBL(GameInit2_CranesInit, pGTASA + 0x55F748);
+
+    SET_TO(MaxObjectsDrawDistance, pGTASA + 0x70BD8C);
   #endif
 
     // Patches
