@@ -305,6 +305,7 @@ void LoadDatFile()
                 }
             }
         }
+        bCatchLamppostsNow = true;
         CloseFile(fd);
     }
     else
