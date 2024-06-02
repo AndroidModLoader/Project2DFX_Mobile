@@ -897,6 +897,7 @@ extern "C" void OnAllModsLoaded()
     {
         fCoronaFarClip = cfg->GetFloat("CoronaFarClip", 0.0f, "LodLights");
         fCoronaFarClipSQR = fCoronaFarClip * fCoronaFarClip;
+        if(fCoronaFarClip <= 0) autoFarClip = true;
     }
     else autoFarClip = true;
     szCustomCoronaTexturePath = cfg->GetString("CustomCoronaTexturePath", ".\\corona.png", "LodLights");
