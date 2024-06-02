@@ -987,6 +987,7 @@ extern "C" void OnAllModsLoaded()
     HOOKBL(GameInit2_CranesInit, pGTASA + 0x55F748);
 
     SET_TO(MaxObjectsDrawDistance, pGTASA + 0x70BD8C);
+    aml->Unprot((uintptr_t)MaxObjectsDrawDistance);
   #endif
 
     // Patches
