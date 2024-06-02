@@ -136,7 +136,7 @@ int                 (*FindIplSlot)(const char* name);
 void                (*RequestIplAndIgnore)(int iplSlot);
 void                (*RequestModel)(int modelId, eStreamingFlags flag);
 void                (*LoadAllRequestedModels)(bool bOnlyPriorityRequests);
-void                (*RegisterLODCorona)(unsigned int nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay);
+void                (*RegisterLODCorona)(uintptr_t nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay);
 void                (*RwRenderStateSet)(RwRenderState, void*);
 void                (*FlushSpriteBuffer)();
 bool                (*CalcScreenCoors)(CVector*, CVector*, float*, float*, bool, bool);
@@ -146,11 +146,11 @@ void                (*Pre_SearchLightCone)();
 void                (*Post_SearchLightCone)();
 
 // Vars
-std::map<unsigned int, CLODLightsLinkedListNode*> LODLightsUsedMap;
+std::map<uintptr_t, CLODLightsLinkedListNode*> LODLightsUsedMap;
 CLODLightsLinkedListNode LODLightsFreeList, LODLightsUsedList;
 std::vector<CLODLightsLinkedListNode> LODLightsLinkedList;
 std::vector<CLODRegisteredCorona> LODLightsCoronas;
-std::map<unsigned int, CRGBA> LODLightsFestiveLights;
+std::map<uintptr_t, CRGBA> LODLightsFestiveLights;
 std::vector<CEntity*> lods;
 int                 numCoronas;
 bool                bCatchLamppostsNow;
@@ -368,7 +368,7 @@ bool IsBlinkingNeeded(int BlinkType)
     }
     return *m_snTimeInMillisecondsPauseMode % (nOnDuration + nOffDuration) < nOnDuration;
 }
-inline void RegisterCoronaMain(unsigned int nID, CEntity* pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, RwTexture* pTex, unsigned char flareType, unsigned char reflectionType, unsigned char LOSCheck, unsigned char unused, float normalAngle, bool bNeonFade, float PullTowardsCam, bool bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool bWhiteCore)
+inline void RegisterCoronaMain(uintptr_t nID, CEntity* pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, RwTexture* pTex, unsigned char flareType, unsigned char reflectionType, unsigned char LOSCheck, unsigned char unused, float normalAngle, bool bNeonFade, float PullTowardsCam, bool bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool bWhiteCore)
 {
     CVector vecPosToCheck = Position;
     CVector* pCamPos = &TheCamera->GetPosition();
@@ -439,11 +439,11 @@ inline void RegisterCoronaMain(unsigned int nID, CEntity* pAttachTo, unsigned ch
         }
     }
 }
-void RegisterNormalCorona(unsigned int nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay)
+void RegisterNormalCorona(uintptr_t nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay)
 {
     RegisterCoronaMain(nID, pAttachTo, R, G, B, A, Position, Size, Range, gpCoronaTexture[coronaType], flareType, enableReflection, checkObstacles, unused, normalAngle, longDistance, nearClip, bFadeIntensity, FadeSpeed, bOnlyFromBelow, reflectionDelay);
 }
-void RegisterFestiveCorona(unsigned int nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay)
+void RegisterFestiveCorona(uintptr_t nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay)
 {
     auto it = LODLightsFestiveLights.find(nID);
     if (it != LODLightsFestiveLights.end())
@@ -812,7 +812,7 @@ DECL_HOOKv(GameInit_StartTestScript)
         });
     }
 }
-DECL_HOOKv(CoronasRegisterFestiveCoronaForEntity, unsigned int nID, CEntity* entity, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, RwTexture* pTex, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
+DECL_HOOKv(CoronasRegisterFestiveCoronaForEntity, uintptr_t nID, CEntity* entity, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, RwTexture* pTex, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
 {
     auto it = LODLightsFestiveLights.find(nID);
     if (it != LODLightsFestiveLights.end())
