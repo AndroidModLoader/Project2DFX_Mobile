@@ -380,63 +380,63 @@ inline void RegisterCoronaMain(uintptr_t nID, CEntity* pAttachTo, unsigned char 
             float fDistFromCam = (*pCamPos - vecPosToCheck).Magnitude();
             if (fDistFromCam < 35.0f) return;
             if (fDistFromCam < 50.0f) A *= (uint8_t)((fDistFromCam - 35.0f) * (2.0f / 3.0f));
-
-            // Is corona already present?
-            CLODRegisteredCorona* pSuitableSlot;
-            auto it = LODLightsUsedMap.find(nID);
-            if (it != LODLightsUsedMap.end())
-            {
-                pSuitableSlot = it->second->GetFrom();
-                if (pSuitableSlot->Intensity == 0 && A == 0)
-                {
-                    // Mark as free
-                    it->second->GetFrom()->Identifier = 0;
-                    it->second->Add(&LODLightsFreeList);
-                    LODLightsUsedMap.erase(nID);
-                    return;
-                }
-            }
-            else
-            {
-                if (!A) return;
-
-                // Adding a new element
-                auto pNewEntry = LODLightsFreeList.First();
-                if (!pNewEntry) return;
-                pSuitableSlot = pNewEntry->GetFrom();
-
-                // Add to used list and push this index to the map
-                pNewEntry->Add(&LODLightsUsedList);
-                LODLightsUsedMap[nID] = pNewEntry;
-                pSuitableSlot->FadedIntensity = A;
-                pSuitableSlot->OffScreen = true;
-                pSuitableSlot->JustCreated = true;
-                pSuitableSlot->Identifier = nID;
-            }
-
-            pSuitableSlot->Red = R;
-            pSuitableSlot->Green = G;
-            pSuitableSlot->Blue = B;
-            pSuitableSlot->Intensity = A;
-            pSuitableSlot->Coordinates = Position;
-            pSuitableSlot->Size = Size;
-            pSuitableSlot->NormalAngle = normalAngle;
-            pSuitableSlot->Range = Range;
-            pSuitableSlot->pTex = pTex;
-            pSuitableSlot->FlareType = flareType;
-            pSuitableSlot->ReflectionType = reflectionType;
-            pSuitableSlot->LOSCheck = LOSCheck;
-            pSuitableSlot->RegisteredThisFrame = true;
-            pSuitableSlot->PullTowardsCam = PullTowardsCam;
-            pSuitableSlot->FadeSpeed = FadeSpeed;
-
-            pSuitableSlot->NeonFade = bNeonFade;
-            pSuitableSlot->OnlyFromBelow = bOnlyFromBelow;
-            pSuitableSlot->WhiteCore = bWhiteCore;
-
-            pSuitableSlot->bIsAttachedToEntity = false;
-            pSuitableSlot->pEntityAttachedTo = NULL;
         }
+
+        // Is corona already present?
+        CLODRegisteredCorona* pSuitableSlot;
+        auto it = LODLightsUsedMap.find(nID);
+        if (it != LODLightsUsedMap.end())
+        {
+            pSuitableSlot = it->second->GetFrom();
+            if (pSuitableSlot->Intensity == 0 && A == 0)
+            {
+                // Mark as free
+                it->second->GetFrom()->Identifier = 0;
+                it->second->Add(&LODLightsFreeList);
+                LODLightsUsedMap.erase(nID);
+                return;
+            }
+        }
+        else
+        {
+            if (!A) return;
+
+            // Adding a new element
+            auto pNewEntry = LODLightsFreeList.First();
+            if (!pNewEntry) return;
+            pSuitableSlot = pNewEntry->GetFrom();
+
+            // Add to used list and push this index to the map
+            pNewEntry->Add(&LODLightsUsedList);
+            LODLightsUsedMap[nID] = pNewEntry;
+            pSuitableSlot->FadedIntensity = A;
+            pSuitableSlot->OffScreen = true;
+            pSuitableSlot->JustCreated = true;
+            pSuitableSlot->Identifier = nID;
+        }
+
+        pSuitableSlot->Red = R;
+        pSuitableSlot->Green = G;
+        pSuitableSlot->Blue = B;
+        pSuitableSlot->Intensity = A;
+        pSuitableSlot->Coordinates = Position;
+        pSuitableSlot->Size = Size;
+        pSuitableSlot->NormalAngle = normalAngle;
+        pSuitableSlot->Range = Range;
+        pSuitableSlot->pTex = pTex;
+        pSuitableSlot->FlareType = flareType;
+        pSuitableSlot->ReflectionType = reflectionType;
+        pSuitableSlot->LOSCheck = LOSCheck;
+        pSuitableSlot->RegisteredThisFrame = true;
+        pSuitableSlot->PullTowardsCam = PullTowardsCam;
+        pSuitableSlot->FadeSpeed = FadeSpeed;
+
+        pSuitableSlot->NeonFade = bNeonFade;
+        pSuitableSlot->OnlyFromBelow = bOnlyFromBelow;
+        pSuitableSlot->WhiteCore = bWhiteCore;
+
+        pSuitableSlot->bIsAttachedToEntity = false;
+        pSuitableSlot->pEntityAttachedTo = NULL;
     }
 }
 void RegisterNormalCorona(uintptr_t nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay)
