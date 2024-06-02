@@ -245,11 +245,14 @@ void RenderBufferedLODLights()
                             RwRenderStateSet(rwRENDERSTATETEXTURERASTER, pLastRaster);
                         }
 
-                        CVector vecCoronaCoordsAfterPull;
-                        vecCoronaCoordsAfterPull.x -= ((vecCoronaCoords.x - pCamPos->x) * LODLightsCoronas[i].PullTowardsCam);
-                        vecCoronaCoordsAfterPull.y -= ((vecCoronaCoords.y - pCamPos->y) * LODLightsCoronas[i].PullTowardsCam);
-                        vecCoronaCoordsAfterPull.z -= ((vecCoronaCoords.z - pCamPos->z) * LODLightsCoronas[i].PullTowardsCam);
+                        CVector vecCoronaCoordsAfterPull = vecCoronaCoords;
+                        CVector vecTempVector = vecCoronaCoords - *pCamPos;
+                        VectorNormalise(&vecTempVector);
 
+                        vecCoronaCoordsAfterPull.x -= (vecTempVector.x * LODLightsCoronas[i].PullTowardsCam);
+                        vecCoronaCoordsAfterPull.y -= (vecTempVector.y * LODLightsCoronas[i].PullTowardsCam);
+                        vecCoronaCoordsAfterPull.z -= (vecTempVector.z * LODLightsCoronas[i].PullTowardsCam);
+                        
                         if (CalcScreenCoors(&vecCoronaCoordsAfterPull, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true))
                         {
                             RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, LODLightsCoronas[i].Size * fComputedHeight, LODLightsCoronas[i].Size * fComputedHeight * fColourFogMult, LODLightsCoronas[i].Red / fColourFogMult, LODLightsCoronas[i].Green / fColourFogMult, LODLightsCoronas[i].Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 0xFF);
