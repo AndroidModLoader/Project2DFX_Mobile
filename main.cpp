@@ -487,6 +487,7 @@ void RegisterLODLights()
         float           fRadius = 0.0f;
         unsigned int    nTime = *CurrentTimeHours * 60 + *CurrentTimeMinutes;
         unsigned int    curMin = *CurrentTimeMinutes;
+        float           fCurCoronaFarClip = autoFarClip ? *ms_fFarClipPlane : fCoronaFarClip;
 
         if (nTime >= 20 * 60) bAlpha = (uint8_t)((15.0f / 16.0f)*nTime - 1095.0f);
         else if (nTime < 3 * 60) bAlpha = 255;
@@ -497,19 +498,19 @@ void RegisterLODLights()
         {
             if ((it->vecPos.z >= -15.0f) && (it->vecPos.z <= 1030.0f))
             {
-                float fDistSqr = (*pCamPos - it->vecPos).Magnitude();
-                if ((fDistSqr > 250.0f*250.0f && fDistSqr < fCoronaFarClipSQR) || it->nNoDistance)
+                float fDist = (*pCamPos - it->vecPos).Magnitude();
+                if ((fDist > 250.0f && fDist < fCurCoronaFarClip) || it->nNoDistance)
                 {
                     if (it->nNoDistance) fRadius = 3.5f;
-                    else fRadius = (fDistSqr < 300.0f*300.0f) ? (0.07f) * sqrtf(fDistSqr) - 17.5f : 3.5f;
+                    else fRadius = (fDist < 300.0f) ? (0.07f) * fDist - 17.5f : 3.5f;
 
-                    if (bSlightlyIncreaseRadiusWithDistance) fRadius *= fminf((0.0025f)*sqrtf(fDistSqr) + 0.25f, 4.0f);
+                    if (bSlightlyIncreaseRadiusWithDistance) fRadius *= fminf(0.0025f * fDist + 0.25f, 4.0f);
 
                     if (it->fCustomSizeMult != 0.45f)
                     {
                         if (!it->nCoronaShowMode)
                         {
-                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                             if (bRenderStaticShadowsForLODs)
                             {
                                 // StoreStaticShadow
@@ -523,14 +524,14 @@ void RegisterLODLights()
 
                             (blinking > 1.0f) ? blinking = 1.0f : (blinking < 0.0f) ? blinking = 0.0f : 0.0f;
 
-                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, blinking * (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, blinking * (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                         }
                     }
                     else
                     {
                         if ((it->colour.r >= 250 && it->colour.g >= 100 && it->colour.b <= 100) && ((curMin == 9 || curMin == 19 || curMin == 29 || curMin == 39 || curMin == 49 || curMin == 59))) //yellow
                         {
-                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                         }
                         else
                         {
@@ -538,22 +539,22 @@ void RegisterLODLights()
                             {
                                 if ((it->colour.r >= 250 && it->colour.g < 100 && it->colour.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                                 else if ((it->colour.r == 0 && it->colour.g >= 250 && it->colour.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                             }
                             else
                             {
                                 if ((it->colour.r == 0 && it->colour.g >= 250 && it->colour.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                                 else if ((it->colour.r >= 250 && it->colour.g < 100 && it->colour.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                             }
                         }
