@@ -46,7 +46,7 @@ public:
     bool        ReflectionType;         // What type of reflection during wet weather
     bool        LOSCheck : 1;           // Do we check the LOS or do we render at the right Z value
     bool        OffScreen : 1;          // Set by the rendering code to be used by the update code
-    bool        JustCreated;            // If this guy has been created this frame we won't delete it (It hasn't had the time to get its OffScreen cleared) ##SA removed from packed byte ##
+    bool        JustCreated : 1;        // If this guy has been created this frame we won't delete it (It hasn't had the time to get its OffScreen cleared) ##SA removed from packed byte ##
     bool        NeonFade : 1;           // Does the guy fade out when closer to cam
     bool        OnlyFromBelow : 1;      // This corona is only visible if the camera is below it. ##SA##
     bool        bHasValidHeightAboveGround : 1;
@@ -203,8 +203,8 @@ void RenderBufferedLODLights()
     RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
 
-    int siz = LODLightsCoronas.size();
-    for (size_t i = 0; i < siz; ++i)
+    int size = LODLightsCoronas.size();
+    for (size_t i = 0; i < size; ++i)
     {
         if (LODLightsCoronas[i].Identifier && LODLightsCoronas[i].Intensity > 0)
         {
@@ -255,7 +255,7 @@ void RenderBufferedLODLights()
                         
                         if (CalcScreenCoors(&vecCoronaCoordsAfterPull, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true))
                         {
-                            RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, LODLightsCoronas[i].Size * fComputedHeight, LODLightsCoronas[i].Size * fComputedHeight * fColourFogMult, LODLightsCoronas[i].Red / fColourFogMult, LODLightsCoronas[i].Green / fColourFogMult, LODLightsCoronas[i].Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 255);
+                            RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, LODLightsCoronas[i].Size * fComputedWidth, LODLightsCoronas[i].Size * fComputedHeight * fColourFogMult, LODLightsCoronas[i].Red / fColourFogMult, LODLightsCoronas[i].Green / fColourFogMult, LODLightsCoronas[i].Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 255);
                         }
                     }
                 }
