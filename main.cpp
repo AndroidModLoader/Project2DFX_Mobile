@@ -612,13 +612,13 @@ void SetMaxDrawDistanceForNormalObjects(float v)
         
       #ifdef AML32
         aml->WriteFloat(pGTASA + 0x4114E8,  v);
+        aml->WriteFloat(pGTASA + 0x4114F4, -v);
         aml->WriteFloat(pGTASA + 0x40F3B4,  v);
         aml->WriteFloat(pGTASA + 0x40F370,  v);
         aml->WriteFloat(pGTASA + 0x40F374,  v);
         aml->WriteFloat(pGTASA + 0x40F378,  v);
         aml->WriteFloat(pGTASA + 0x40F37C,  v);
         aml->WriteFloat(pGTASA + 0x4692F8,  v);
-        aml->WriteFloat(pGTASA + 0x4114F4, -v);
       #else
         *MaxObjectsDrawDistance = v;
       #endif
@@ -987,9 +987,6 @@ extern "C" void OnAllModsLoaded()
     HOOKBL(RenderEffects_MovingThings, pGTASA + 0x4D88FC);
     HOOKBL(RegisterCorona_FarClip, pGTASA + 0x6C8438); // CoronaFarClip_Inject replacement
     HOOKBL(GameInit2_CranesInit, pGTASA + 0x55F748);
-
-    SET_TO(MaxObjectsDrawDistance, pGTASA + 0x70BD8C);
-    aml->Unprot((uintptr_t)MaxObjectsDrawDistance);
   #endif
 
     // Patches
@@ -1052,7 +1049,13 @@ extern "C" void OnAllModsLoaded()
     }
     if (fStaticSunSize)
     {
-        
+      #ifdef AML32
+        aml->WriteFloat(pGTASA + 0x5A4010, fStaticSunSize * 2.7335f);
+        aml->Write(pGTASA + 0x5A3F00, "\xB0\xEE\x41\x0A", 4);
+      #else
+        aml->WriteFloat(pGTASA + 0x7634A4, fStaticSunSize * 2.7335f);
+        aml->Write32(pGTASA + 0x6C76F8, 0x1E204020);
+      #endif
     }
     if (fStaticShadowsDrawDistance)
     {
@@ -1082,6 +1085,22 @@ extern "C" void OnAllModsLoaded()
         HOOKBL(LoadObject_AddDamageAtomicModel, pGTASA + 0x5548FC);
         HOOKBL(LoadObject_AddAtomicModel, pGTASA + 0x5548F4);
         HOOKBL(LoadObject_GetModelCDName, pGTASA + 0x554928);
+
+        SET_TO(MaxObjectsDrawDistance, pGTASA + 0x70BD98);
+        aml->Unprot((uintptr_t)MaxObjectsDrawDistance);
+        *MaxObjectsDrawDistance = 300.0f;
+
+        aml->Write32(pGTASA + 0x4F66A8, 0xB00010A8);
+        aml->Write32(pGTASA + 0x4F66B4, 0xBD4D9904);
+        aml->Write32(pGTASA + 0x4F66CC, 0x1E242000);
+        aml->Write32(pGTASA + 0x4F66EC, 0x1E242020);
+        aml->Write32(pGTASA + 0x4F6714, 0x1E214082); // CRenderer::SetupEntityVisibility
+
+        aml->Write32(pGTASA + 0x4F44DC, 0xF00010AB);
+        aml->Write32(pGTASA + 0x4F44E4, 0xBD4D9904); // CRenderer::ScanWorld
+
+        aml->Write32(pGTASA + 0x554480, 0xF0000DA8);
+        aml->Write32(pGTASA + 0x55448C, 0xBD4D9908); // CFileLoader::LoadScene
       #endif
         if (fGenericObjectsDrawDistance || fAllNormalObjectsDrawDistance || fVegetationDrawDistance)
         {
@@ -1132,4 +1151,11 @@ extern "C" void OnAllModsLoaded()
           #endif
         }
     }
+
+    // NearClip patch
+  #ifdef AML32
+    aml->Write(pGTASA + 0x3F60EA, "\xB0\xEE\x49\x0A", 4);
+  #else
+    aml->Write32(pGTASA + 0x4D8664, 0x1E204120);
+  #endif
 }
