@@ -268,10 +268,7 @@ void RenderBufferedLODLights()
 }
 void LoadDatFile()
 {
-    char path[256];
-    snprintf(path, sizeof(path), "%s/data/SALodLights.dat", aml->GetAndroidDataPath());
-
-    int fd = OpenFile(path, "r");
+    uintptr_t fd = OpenFile("data/SALodLights.dat", "r");
     if(fd)
     {
         unsigned short nModel = 0xFFFF, nCurIndexForModel = 0;
