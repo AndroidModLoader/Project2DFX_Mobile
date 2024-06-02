@@ -29,7 +29,7 @@ class CLODRegisteredCorona
 {
 public:
     CVector     Coordinates;            // Where is it exactly.
-    uint32_t    Identifier;             // Should be unique for each corona. Address or something (0 = empty)
+    uintptr_t   Identifier;             // Should be unique for each corona. Address or something (0 = empty)
     RwTexture*  pTex;                   // Pointer to the actual texture to be rendered
     float       Size;                   // How big is this fellow
     float       NormalAngle;            // Is corona normal (if relevant) facing the camera?
@@ -55,9 +55,7 @@ public:
 
     CEntity*    pEntityAttachedTo;
 
-    CLODRegisteredCorona()
-        : Identifier(0), pEntityAttachedTo(nullptr)
-    {}
+    CLODRegisteredCorona() : Identifier(0), pEntityAttachedTo(nullptr) {}
     void Update()
     {
         if (!RegisteredThisFrame)
