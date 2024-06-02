@@ -2,6 +2,7 @@
 #include <mod/logger.h>
 #include <mod/config.h>
 #include <string>
+#include <chrono>
 
 #ifdef AML32
     #include "GTASA_STRUCTS.h"
