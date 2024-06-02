@@ -29,45 +29,42 @@ class CLODRegisteredCorona
 {
 public:
     CVector     Coordinates;            // Where is it exactly.
-    uintptr_t   Identifier;             // Should be unique for each corona. Address or something (0 = empty)
-    RwTexture*  pTex;                   // Pointer to the actual texture to be rendered
     float       Size;                   // How big is this fellow
     float       NormalAngle;            // Is corona normal (if relevant) facing the camera?
     float       Range;                  // How far away is this guy still visible
+    uintptr_t   Identifier;             // Should be unique for each corona. Address or something (0 = empty)
+    RwTexture*  pTex;                   // Pointer to the actual texture to be rendered
     float       PullTowardsCam;         // How far away is the z value pulled towards camera.
-    float       HeightAboveGround;      // Stired so that we don't have to do a ProcessVerticalLine every frame
+    
                                         // The following fields are used for trails behind coronas (glowy lights)
     float       FadeSpeed;              // The speed the corona fades in and out ##SA##
     uint8_t     Red, Green, Blue;       // Rendering colour.
     uint8_t     Intensity;              // 255 = full
     uint8_t     FadedIntensity;         // Intensity that lags behind the given intenisty and fades out if the LOS is blocked
     bool        RegisteredThisFrame;    // Has this guy been registered by game code this frame
+    bool        JustCreated;            // If this guy has been created this frame we won't delete it (It hasn't had the time to get its OffScreen cleared) ##SA removed from packed byte ##
     bool        FlareType;              // What type of flare to render
     bool        ReflectionType;         // What type of reflection during wet weather
+
     bool        LOSCheck : 1;           // Do we check the LOS or do we render at the right Z value
     bool        OffScreen : 1;          // Set by the rendering code to be used by the update code
-    bool        JustCreated : 1;        // If this guy has been created this frame we won't delete it (It hasn't had the time to get its OffScreen cleared) ##SA removed from packed byte ##
     bool        NeonFade : 1;           // Does the guy fade out when closer to cam
     bool        OnlyFromBelow : 1;      // This corona is only visible if the camera is below it. ##SA##
-    bool        bHasValidHeightAboveGround : 1;
     bool        WhiteCore : 1;          // This corona rendered with a small white core.
-    bool        bIsAttachedToEntity : 1;
 
-    CEntity*    pEntityAttachedTo;
-
-    CLODRegisteredCorona() : Identifier(0), pEntityAttachedTo(nullptr) {}
-    void Update()
+    CLODRegisteredCorona() : Identifier(0) {}
+    inline void Update()
     {
         if (!RegisteredThisFrame)
         {
-            Intensity = 0;
+            Intensity = false;
         }
         if (!Intensity && !JustCreated)
         {
-            Identifier = 0;
+            Identifier = false;
         }
-        JustCreated = 0;
-        RegisteredThisFrame = 0;
+        JustCreated = false;
+        RegisteredThisFrame = false;
     }
 };
 class CLODLightsLinkedListNode
@@ -79,7 +76,7 @@ private:
 
 private:
     inline void                         Remove()
-        { pNext->pPrev = pPrev; pPrev->pNext = pNext; pNext = nullptr; }
+        { pNext->pPrev = pPrev; pPrev->pNext = pNext; pNext = NULL; }
 
 public:
     inline void                         Init()
@@ -97,7 +94,7 @@ public:
         { return pPrev; }
 
     inline CLODLightsLinkedListNode*    First()
-        { return pNext == this ? nullptr : pNext; }
+        { return pNext == this ? NULL : pNext; }
 };
 
 // Init
@@ -197,6 +194,9 @@ void RenderBufferedLODLights()
     bool bLastZWriteRenderState = true;
     CVector* pCamPos = &TheCamera->GetPosition();
 
+    CVector vecCoronaCoords, vecTransformedCoords;
+    float fComputedWidth, fComputedHeight;
+
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)false);
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)true);
     RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
@@ -206,63 +206,64 @@ void RenderBufferedLODLights()
     int size = LODLightsCoronas.size();
     for (size_t i = 0; i < size; ++i)
     {
-        if (LODLightsCoronas[i].Identifier && LODLightsCoronas[i].Intensity > 0)
+        CLODRegisteredCorona& corona = LODLightsCoronas[i];
+        if (corona.Identifier && corona.Intensity > 0 && corona.pTex)
         {
-            CVector vecCoronaCoords = LODLightsCoronas[i].Coordinates, vecTransformedCoords;
-            float fComputedWidth, fComputedHeight;
+            vecCoronaCoords = corona.Coordinates;
 
             if(CalcScreenCoors(&vecCoronaCoords, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true))
             {
-                LODLightsCoronas[i].OffScreen = !(vecTransformedCoords.x >= 0.0 && vecTransformedCoords.x <= nWidth &&
-                        vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
+                // Probably useless check ever
+                // corona.OffScreen = !(vecTransformedCoords.x >= 0.0 && vecTransformedCoords.x <= nWidth && vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
 
-                if (LODLightsCoronas[i].Intensity > 0 && vecTransformedCoords.z <= LODLightsCoronas[i].Range)
+                if (vecTransformedCoords.z <= corona.Range)
                 {
                     float fInvFarClip = 1.0f / vecTransformedCoords.z;
-                    float fHalfRange = LODLightsCoronas[i].Range * 0.5f;
-                    short nFadeIntensity = (short)(LODLightsCoronas[i].Intensity * (vecTransformedCoords.z > fHalfRange ? 1.0f - (vecTransformedCoords.z - fHalfRange) / fHalfRange : 1.0f));
+                    float fHalfRange = corona.Range * 0.5f;
+                    short nFadeIntensity = (short)(corona.Intensity * (vecTransformedCoords.z > fHalfRange ? 1.0f - (vecTransformedCoords.z - fHalfRange) / fHalfRange : 1.0f));
 
-                    if (bLastZWriteRenderState != LODLightsCoronas[i].LOSCheck == false)
+                    if (bLastZWriteRenderState != corona.LOSCheck == false)
                     {
-                        bLastZWriteRenderState = LODLightsCoronas[i].LOSCheck == false;
+                        bLastZWriteRenderState = corona.LOSCheck == false;
                         FlushSpriteBuffer();
                         RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)bLastZWriteRenderState);
                     }
 
-                    if (LODLightsCoronas[i].pTex)
+                    float fColourFogMult = fminf(40.0f, vecTransformedCoords.z) * *flWeatherFoggyness * 0.025f + 1.0f;
+
+                    // This R* tweak broke the sun
+                    //RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
+                    if (pLastRaster != corona.pTex->raster)
                     {
-                        float fColourFogMult = fminf(40.0f, vecTransformedCoords.z) * *flWeatherFoggyness * 0.025f + 1.0f;
+                        pLastRaster = corona.pTex->raster;
+                        FlushSpriteBuffer();
+                        RwRenderStateSet(rwRENDERSTATETEXTURERASTER, pLastRaster);
+                    }
 
-                        // Sun core
-                        if (LODLightsCoronas[i].Identifier == 1) vecTransformedCoords.z = *ms_fFarClipZ * 0.95f;
-
-                        // This R* tweak broke the sun
-                        //RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
-                        if (pLastRaster != LODLightsCoronas[i].pTex->raster)
-                        {
-                            pLastRaster = LODLightsCoronas[i].pTex->raster;
-                            FlushSpriteBuffer();
-                            RwRenderStateSet(rwRENDERSTATETEXTURERASTER, pLastRaster);
-                        }
-
+                    if(corona.PullTowardsCam != 0)
+                    {
                         CVector vecCoronaCoordsAfterPull = vecCoronaCoords;
                         CVector vecTempVector = vecCoronaCoords - *pCamPos;
                         VectorNormalise(&vecTempVector);
 
-                        vecCoronaCoordsAfterPull.x -= (vecTempVector.x * LODLightsCoronas[i].PullTowardsCam);
-                        vecCoronaCoordsAfterPull.y -= (vecTempVector.y * LODLightsCoronas[i].PullTowardsCam);
-                        vecCoronaCoordsAfterPull.z -= (vecTempVector.z * LODLightsCoronas[i].PullTowardsCam);
+                        vecCoronaCoordsAfterPull.x -= (vecTempVector.x * corona.PullTowardsCam);
+                        vecCoronaCoordsAfterPull.y -= (vecTempVector.y * corona.PullTowardsCam);
+                        vecCoronaCoordsAfterPull.z -= (vecTempVector.z * corona.PullTowardsCam);
                         
                         if (CalcScreenCoors(&vecCoronaCoordsAfterPull, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true))
                         {
-                            RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, LODLightsCoronas[i].Size * fComputedWidth, LODLightsCoronas[i].Size * fComputedHeight * fColourFogMult, LODLightsCoronas[i].Red / fColourFogMult, LODLightsCoronas[i].Green / fColourFogMult, LODLightsCoronas[i].Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 255);
+                            RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight * fColourFogMult, corona.Red / fColourFogMult, corona.Green / fColourFogMult, corona.Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 255);
                         }
+                    }
+                    else
+                    {
+                        RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight * fColourFogMult, corona.Red / fColourFogMult, corona.Green / fColourFogMult, corona.Blue / fColourFogMult, nFadeIntensity, fInvFarClip * 20.0f, 0.0, 255);
                     }
                 }
             }
             else
             {
-                LODLightsCoronas[i].OffScreen = true;
+                corona.OffScreen = true;
             }
         }
     }
@@ -439,9 +440,6 @@ inline void RegisterCoronaMain(uintptr_t nID, CEntity* pAttachTo, unsigned char 
         pSuitableSlot->NeonFade = bNeonFade;
         pSuitableSlot->OnlyFromBelow = bOnlyFromBelow;
         pSuitableSlot->WhiteCore = bWhiteCore;
-
-        pSuitableSlot->bIsAttachedToEntity = false;
-        pSuitableSlot->pEntityAttachedTo = NULL;
     }
 }
 void RegisterNormalCorona(uintptr_t nID, CEntity *pAttachTo, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range, unsigned char coronaType, unsigned char flareType, bool enableReflection, bool checkObstacles, int unused, float normalAngle, bool longDistance, float nearClip, unsigned char bFadeIntensity, float FadeSpeed, bool bOnlyFromBelow, bool reflectionDelay)
@@ -500,21 +498,24 @@ void RegisterLODLights()
         CVector* pCamPos = &TheCamera->GetPosition();
         for (auto it = m_pLampposts->cbegin(); it != m_pLampposts->cend(); ++it)
         {
-            if ((it->vecPos.z >= -15.0f) && (it->vecPos.z <= 1030.0f))
+            // The line below is moved to 'CSearchLights::RegisterLamppost'
+            //if ((it->vecPos.z >= -15.0f) && (it->vecPos.z <= 1030.0f))
             {
                 float fDist = (*pCamPos - it->vecPos).Magnitude();
-                if ((fDist > 250.0f && fDist < fCurCoronaFarClip) || it->nNoDistance)
+                if (it->nNoDistance || (fDist > 250.0f && fDist < fCurCoronaFarClip))
                 {
                     if (it->nNoDistance) fRadius = 3.5f;
                     else fRadius = (fDist < 300.0f) ? (0.07f) * fDist - 17.5f : 3.5f;
 
                     if (bSlightlyIncreaseRadiusWithDistance) fRadius *= fminf(0.0025f * fDist + 0.25f, 4.0f);
 
+                    CRGBA Color = it->colour;
+
                     if (it->fCustomSizeMult != 0.45f)
                     {
                         if (!it->nCoronaShowMode)
                         {
-                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                             if (bRenderStaticShadowsForLODs)
                             {
                                 // StoreStaticShadow
@@ -528,37 +529,37 @@ void RegisterLODLights()
 
                             (blinking > 1.0f) ? blinking = 1.0f : (blinking < 0.0f) ? blinking = 0.0f : 0.0f;
 
-                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, blinking * (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, blinking * (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                         }
                     }
                     else
                     {
-                        if ((it->colour.r >= 250 && it->colour.g >= 100 && it->colour.b <= 100) && ((curMin == 9 || curMin == 19 || curMin == 29 || curMin == 39 || curMin == 49 || curMin == 59))) //yellow
+                        if ((Color.r >= 250 && Color.g >= 100 && Color.b <= 100) && ((curMin == 9 || curMin == 19 || curMin == 29 || curMin == 39 || curMin == 49 || curMin == 59))) //yellow
                         {
-                            RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                            RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                         }
                         else
                         {
                             if ((fabsf(it->fHeading) >= (3.1415f / 6.0f) && fabsf(it->fHeading) <= (5.0f * 3.1415f / 6.0f)))
                             {
-                                if ((it->colour.r >= 250 && it->colour.g < 100 && it->colour.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
+                                if ((Color.r >= 250 && Color.g < 100 && Color.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
-                                else if ((it->colour.r == 0 && it->colour.g >= 250 && it->colour.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
+                                else if ((Color.r == 0 && Color.g >= 250 && Color.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                             }
                             else
                             {
-                                if ((it->colour.r == 0 && it->colour.g >= 250 && it->colour.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
+                                if ((Color.r == 0 && Color.g >= 250 && Color.b == 0) && (((curMin >= 0 && curMin < 9) || (curMin >= 20 && curMin < 29) || (curMin >= 40 && curMin < 49)))) //red
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
-                                else if ((it->colour.r >= 250 && it->colour.g < 100 && it->colour.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
+                                else if ((Color.r >= 250 && Color.g < 100 && Color.b == 0) && (((curMin > 9 && curMin < 19) || (curMin > 29 && curMin < 39) || (curMin > 49 && curMin < 59)))) //green
                                 {
-                                    RegisterLODCorona(reinterpret_cast<uintptr_t>(&*it), nullptr, it->colour.r, it->colour.g, it->colour.b, (bAlpha * (it->colour.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
+                                    RegisterLODCorona((uintptr_t)(&*it), NULL, Color.r, Color.g, Color.b, (bAlpha * (Color.a / 255.0f)), it->vecPos, (fRadius * it->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip, 1, 0, false, false, 0, 0.0f, false, 0.0f, 0, 255.0f, false, false);
                                 }
                             }
                         }
@@ -1097,7 +1098,7 @@ extern "C" void OnAllModsLoaded()
         aml->Write32(pGTASA + 0x4F6714, 0x1E214082); // CRenderer::SetupEntityVisibility
 
         aml->Write32(pGTASA + 0x4F44DC, 0xF00010AB);
-        aml->Write32(pGTASA + 0x4F44E4, 0xBD4D9904); // CRenderer::ScanWorld
+        aml->Write32(pGTASA + 0x4F44E4, 0xBD4D9961); // CRenderer::ScanWorld
 
         aml->Write32(pGTASA + 0x554480, 0xF0000DA8);
         aml->Write32(pGTASA + 0x55448C, 0xBD4D9908); // CFileLoader::LoadScene

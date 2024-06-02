@@ -416,6 +416,10 @@ void CSearchLights::RegisterLamppost(CEntity* pObj)
     auto itEnd = pFileContent->upper_bound(PackKey(nModelID, 0xFFFF));
     for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; it++)
     {
-        m_pLampposts->push_back(CLamppostInfo(dummyMatrix * it->second.vecPos, it->second.colour, it->second.fCustomSizeMult, it->second.nCoronaShowMode, it->second.nNoDistance, it->second.nDrawSearchlight, pObj->GetTransform().m_fHeading));
+        CVector pos = dummyMatrix * it->second.vecPos;
+        if(pos.z >= -15.0f && pos.z <= 1030.0f) // moved this from 'RegisterLODLights'
+        {
+            m_pLampposts->push_back(CLamppostInfo(pos, it->second.colour, it->second.fCustomSizeMult, it->second.nCoronaShowMode, it->second.nNoDistance, it->second.nDrawSearchlight, pObj->GetTransform().m_fHeading));
+        }
     }
 }
