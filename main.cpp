@@ -776,13 +776,21 @@ DECL_HOOKb(GenericLoad_IplStoreLoad)
                                                        "VEGASW_STREAM7", "VEGASW_STREAM8", "VEGASW_STREAM9"
                                                      };
 
+  #ifdef AML32
     aml->Write8(pGTASA + 0x281FE4, 0x00); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 0;
+  #else
+    aml->Write32(pGTASA + 0x33D258, 0x2A1F03E8); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 1;
+  #endif
     for (auto it = IPLStreamNames.cbegin(); it != IPLStreamNames.cend(); ++it)
     {
         int iplSlot = FindIplSlot(it->c_str());
         if (iplSlot >= 0) RequestIplAndIgnore(iplSlot);
     }
+  #ifdef AML32
     aml->Write8(pGTASA + 0x281FE4, 0x01); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 1;
+  #else
+    aml->Write32(pGTASA + 0x33D258, 0x52800028); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 1;
+  #endif
 
     return true;
 }
