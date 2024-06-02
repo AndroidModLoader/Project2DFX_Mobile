@@ -29,7 +29,7 @@ class CLODRegisteredCorona
 public:
     CVector     Coordinates;            // Where is it exactly.
     uint32_t    Identifier;             // Should be unique for each corona. Address or something (0 = empty)
-    RwTexture*    pTex;                   // Pointer to the actual texture to be rendered
+    RwTexture*  pTex;                   // Pointer to the actual texture to be rendered
     float       Size;                   // How big is this fellow
     float       NormalAngle;            // Is corona normal (if relevant) facing the camera?
     float       Range;                  // How far away is this guy still visible
@@ -129,9 +129,9 @@ float*              ms_fFarClipPlane;
 // Org Fns
 char                (*GetIsTimeInRange)(char hourA, char hourB);
 float               (*FindGroundZFor3DCoord)(float x, float y, float z, bool* pCollisionResult, CEntity **pGroundObject);
-int                 (*OpenFile)(const char* filepath, const char* mode);
-void                (*CloseFile)(int fd);
-const char*         (*LoadLine)(int fd);
+uintptr_t           (*OpenFile)(const char* filepath, const char* mode);
+void                (*CloseFile)(uintptr_t fd);
+const char*         (*LoadLine)(uintptr_t fd);
 CBaseModelInfo*     (*GetModelInfoUInt16)(const char* modelName, uint16_t *index);
 int                 (*FindIplSlot)(const char* name);
 void                (*RequestIplAndIgnore)(int iplSlot);
