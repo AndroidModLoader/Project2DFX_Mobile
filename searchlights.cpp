@@ -350,48 +350,46 @@ void CSearchLights::DrawCustomSpotLightSA(CVector StartPoint, CVector EndPoint, 
 
 void CSearchLights::RenderSearchLightsSA()
 {
-    if(*flWeatherFoggyness)
+    if(*flWeatherFoggyness && GetIsTimeInRange(20, 7) && *nActiveInterior == 0)
     {
-        if (GetIsTimeInRange(20, 7) && *nActiveInterior == 0)
+        Pre_SearchLightCone();
+
+        // 0x952126 word_952126
+        // 0x95275C word_95275C
+        auto cend = m_pLampposts->cend();
+        for (auto it = m_pLampposts->cbegin(); it != cend; ++it)
         {
-            Pre_SearchLightCone();
-
-            // 0x952126 word_952126
-            // 0x95275C word_95275C
-            for (auto it = m_pLampposts->cbegin(); it != m_pLampposts->cend(); ++it)
+            if (it->nDrawSearchlight)
             {
-                if (it->nDrawSearchlight)
+                CVector      EndPoint = it->vecPos;
+                CVector*     pCamPos = &TheCamera->GetPosition();
+                float        fDistSqr = (pCamPos->x - EndPoint.x)*(pCamPos->x - EndPoint.x) + (pCamPos->y - EndPoint.y)*(pCamPos->y - EndPoint.y) + (pCamPos->z - EndPoint.z)*(pCamPos->z - EndPoint.z);
+
+                if ((fDistSqr > 50.0f*50.0f) && (fDistSqr < 300.0f*300.0f))
                 {
-                    CVector*     pCamPos = &TheCamera->GetPosition();
-                    float        fDistSqr = (pCamPos->x - it->vecPos.x)*(pCamPos->x - it->vecPos.x) + (pCamPos->y - it->vecPos.y)*(pCamPos->y - it->vecPos.y) + (pCamPos->z - it->vecPos.z)*(pCamPos->z - it->vecPos.z);
+                    float fVisibility = fSearchlightEffectVisibilityFactor * ((0.0233333f)*sqrt(fDistSqr) - 1.16667f);
 
-                    if ((fDistSqr > 50.0f*50.0f) && (fDistSqr < 300.0f*300.0f))
+                    EndPoint.z = FindGroundZFor3DCoord(it->vecPos.x, it->vecPos.y, it->vecPos.z, NULL, NULL);
+
+                    if (!(it->colour.r == 255 && it->colour.g == 255 && it->colour.b == 255) && !(it->colour.r == 254 && it->colour.g == 117 && it->colour.b == 134))
                     {
-                        float fVisibility = fSearchlightEffectVisibilityFactor * ((0.0233333f)*sqrt(fDistSqr) - 1.16667f);
-
-                        CVector EndPoint = it->vecPos;
-                        EndPoint.z = FindGroundZFor3DCoord(it->vecPos.x, it->vecPos.y, it->vecPos.z, NULL, NULL);
-
-                        if (!(it->colour.r == 255 && it->colour.g == 255 && it->colour.b == 255) && !(it->colour.r == 254 && it->colour.g == 117 && it->colour.b == 134))
-                        {
-                            //yellow
-                            DrawCustomSpotLightSA(it->vecPos, EndPoint, fmin((8.0f * (it->vecPos.z - EndPoint.z)), 90.0f), it->fCustomSizeMult / 6.0f, 5.0f, 8, fVisibility);
-                        }
-                        else if (!(it->colour.r == 254 && it->colour.g == 117 && it->colour.b == 134))
-                        {
-                            //white
-                            DrawCustomSpotLightSA(it->vecPos, EndPoint, fmin((8.0f * (it->vecPos.z - EndPoint.z)), 90.0f), it->fCustomSizeMult / 6.0f, 255.0f, 8, fVisibility);
-                        }
-                        else
-                        {
-                            //pink
-                            DrawCustomSpotLightSA(it->vecPos, EndPoint, fmin((8.0f * (it->vecPos.z - EndPoint.z)), 90.0f), it->fCustomSizeMult / 6.0f, 200.0f, 18, fVisibility);
-                        }
+                        //yellow
+                        DrawCustomSpotLightSA(it->vecPos, EndPoint, fmin((8.0f * (it->vecPos.z - EndPoint.z)), 90.0f), it->fCustomSizeMult / 6.0f, 5.0f, 8, fVisibility);
+                    }
+                    else if (!(it->colour.r == 254 && it->colour.g == 117 && it->colour.b == 134))
+                    {
+                        //white
+                        DrawCustomSpotLightSA(it->vecPos, EndPoint, fmin((8.0f * (it->vecPos.z - EndPoint.z)), 90.0f), it->fCustomSizeMult / 6.0f, 255.0f, 8, fVisibility);
+                    }
+                    else
+                    {
+                        //pink
+                        DrawCustomSpotLightSA(it->vecPos, EndPoint, fmin((8.0f * (it->vecPos.z - EndPoint.z)), 90.0f), it->fCustomSizeMult / 6.0f, 200.0f, 18, fVisibility);
                     }
                 }
             }
-            Post_SearchLightCone();
         }
+        Post_SearchLightCone();
     }
 }
 

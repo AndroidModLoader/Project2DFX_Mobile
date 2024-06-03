@@ -8,6 +8,6 @@ else
 	LOCAL_MODULE := Project2DFX64
 endif
 LOCAL_SRC_FILES := mod/logger.cpp mod/config.cpp main.cpp searchlights.cpp
-LOCAL_CFLAGS += -O2 -mfloat-abi=softfp -DNDEBUG -std=c++17 -ftree-vectorize
+LOCAL_CFLAGS += -mfloat-abi=softfp -DNDEBUG -std=c++17 -ftree-vectorize
 LOCAL_LDLIBS += -llog
 include $(BUILD_SHARED_LIBRARY)
