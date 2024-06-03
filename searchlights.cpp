@@ -22,6 +22,11 @@ extern float (*FindGroundZFor3DCoord)(float x, float y, float z, bool* pCollisio
 extern char  (*GetIsTimeInRange)(char hourA, char hourB);
 extern void  (*Pre_SearchLightCone)();
 extern void  (*Post_SearchLightCone)();
+extern bool  (*ProcessLineOfSight)(const CVector *vecStart, const CVector *vecEnd, CColPoint *colPoint, CEntity **refEntityPtr, bool bCheckBuildings, bool bCheckVehicles, bool bCheckPeds, bool bCheckObjects, bool bCheckDummies, bool bSeeThroughStuff, bool bIgnoreSomeObjectsForCamera, bool bShootThroughStuff);
+extern void* (*RwIm3DTransform)(RwIm3DVertex *pVerts, RwUInt32 numVerts, RwMatrix *ltm, RwUInt32 flags);
+extern void  (*RwIm3DRenderIndexedPrimitive)(RwPrimitiveType primType, uint16_t *indices, RwInt32 numIndices);
+extern void  (*RwIm3DEnd)();
+extern CVector (*MatrixVectorMult)(CMatrix*, CVector*);
 
 std::vector<CLamppostInfo>             Lampposts;
 std::vector<CLamppostInfo>*            m_pLampposts = &Lampposts;
@@ -33,12 +38,66 @@ extern int                             nSmoothEffect;
 // CHeli::SearchLightCone
 void CSearchLights::DrawCustomSpotLightSA(CVector StartPoint, CVector EndPoint, float TargetRadius, float baseRadius, float slColorFactor1, char slColorFactor2, float slAlpha)
 {
-    /*static short TempBufferRenderIndexList[4096];
-    static VertexBuffer TempVertexBuffer[512];
-    static int TempBufferIndicesStored = 0;
-    static unsigned int TempBufferVerticesStored = 0;
+    static uint16_t TempBufferRenderIndexList[4096];
+    static VertexBuffer TempVertexBuffer;
+    static uint32_t TempBufferIndicesStored = 0;
+    static uint32_t TempBufferVerticesStored = 0;
 
-    RwMatrix *v12; // ebx@1
+    CVector direction = EndPoint - StartPoint;
+    VectorNormalise(&direction);
+    
+    CVector targetPosa = EndPoint + 3.0f * direction;
+  #ifdef CLAMP_SEARCHLIGHT_TO_GROUND
+    CColPoint colPoint;
+    CEntity* refEntityPtr;
+    if(ProcessLineOfSight(&StartPoint, &targetPosa, &colPoint, &refEntityPtr, true, false, false, false, false, false, false, false))
+    {
+        targetPosa = colPoint.m_vecPoint;
+    }
+  #endif
+
+  #ifdef DRAW_SEARCHLIGHT_CORONA
+    CVector directionToCamera = TheCamera->GetPosition() - StartPoint;
+    VectorNormalise(&directionToCamera);
+    CVector CoronaCoors = StartPoint + 15.0f * directionToCamera;
+    // RegisterCorona
+  #endif
+
+    TempBufferIndicesStored = 0;
+    TempBufferVerticesStored = 0;
+
+    CVector upVector(0.0f, 0.0f, 1.0f);
+    for(int i = 0; i <= 40; ++i)
+    {
+        CVector crossedVector = CrossProduct(&direction, &upVector);
+        VectorNormalise(&crossedVector);
+        
+        CVector crossedVector2 = CrossProduct(&crossedVector, &direction);
+        VectorNormalise(&crossedVector2);
+
+        float sinVal = sinf(i * 0.15708f);
+        float cosVal = cosf(i * 0.15708f);
+
+        CVector crossedSin = crossedVector * sinVal;
+        
+    }
+
+    if(TempBufferVerticesStored >= 4)
+    {
+        for(int i = 0; i < TempBufferVerticesStored; ++i)
+        {
+            
+        }
+    }
+
+    if ( TempBufferIndicesStored > 0 && RwIm3DTransform(TempVertexBuffer.m_3d, TempBufferVerticesStored, NULL, rwIM3D_VERTEXRGBA | rwIM3D_VERTEXXYZ) )
+    {
+        RwIm3DRenderIndexedPrimitive(rwPRIMTYPETRILIST, TempBufferRenderIndexList, TempBufferIndicesStored);
+        RwIm3DEnd();
+    }
+
+
+    /*RwMatrix *v12; // ebx@1
     CVector *v13; // eax@4
     signed int v19; // esi@8
     float v20; // fst7@9
@@ -419,10 +478,10 @@ void CSearchLights::RegisterLamppost(CEntity* pObj)
     for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; ++it)
     {
         auto& target = it->second;
-        CVector pos = *dummyMatrix * target.vecPos;
+        CVector pos = MatrixVectorMult(dummyMatrix, &target.vecPos);
         if(pos.z >= -15.0f && pos.z <= 1030.0f) // moved this from 'RegisterLODLights'
         {
-            m_pLampposts->push_back(CLamppostInfo(*dummyMatrix * target.vecPos, target.colour, target.fCustomSizeMult, target.nCoronaShowMode, target.nNoDistance, target.nDrawSearchlight, objTransform.m_fHeading));
+            m_pLampposts->push_back(CLamppostInfo(pos, target.colour, target.fCustomSizeMult, target.nCoronaShowMode, target.nNoDistance, target.nDrawSearchlight, objTransform.m_fHeading));
         }
     }
 }

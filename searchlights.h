@@ -4,6 +4,9 @@
 #include <vector>
 #include <map>
 
+//#define CLAMP_SEARCHLIGHT_TO_GROUND
+//#define DRAW_SEARCHLIGHT_CORONA
+
 class CEntity;
 class CLamppostInfo;
 

@@ -92,7 +92,7 @@ void*               hGTASA;
 // Org Vars
 CBaseModelInfo**    ms_modelInfoPtrs;
 int*                nActiveInterior;
-float               *flWeatherFoggyness, *ms_fTimeStep, *ms_fFarClipZ;
+float               *flWeatherFoggyness, *ms_fTimeStep, *ms_fFarClipZ, *ms_fNearClipZ, *ms_fFOV;
 CCamera*            TheCamera;
 RwTexture**         gpCoronaTexture;
 RwTexture**         gpShadowExplosionTex;
@@ -129,6 +129,11 @@ RwRaster*           (*RwRasterCreate)(RwInt32 width, RwInt32 height, RwInt32 dep
 RwRaster*           (*RwRasterSetFromImage)(RwRaster *raster, RwImage *image);
 RwTexture*          (*RwTextureCreate)(RwRaster *raster);
 RwBool              (*RwImageDestroy)(RwImage *image);
+bool                (*ProcessLineOfSight)(const CVector *vecStart, const CVector *vecEnd, CColPoint *colPoint, CEntity **refEntityPtr, bool bCheckBuildings, bool bCheckVehicles, bool bCheckPeds, bool bCheckObjects, bool bCheckDummies, bool bSeeThroughStuff, bool bIgnoreSomeObjectsForCamera, bool bShootThroughStuff);
+void*               (*RwIm3DTransform)(RwIm3DVertex *pVerts, RwUInt32 numVerts, RwMatrix *ltm, RwUInt32 flags);
+void                (*RwIm3DRenderIndexedPrimitive)(RwPrimitiveType primType, uint16_t *indices, RwInt32 numIndices);
+void                (*RwIm3DEnd)();
+CVector             (*MatrixVectorMult)(CMatrix*, CVector*);
 
 void                (*RegisterLODCorona)(uintptr_t nID, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range);
 
@@ -193,6 +198,24 @@ RwTexture* CPNGFileReadFromFile(const char* pFileName)
     }
     return pTexture;
 }
+inline bool CalcScreenCoorsFast(CVector* WorldPos, CVector* ScreenPos, float* ScaleX, float* ScaleY)
+{
+    CVector screenPos = MatrixVectorMult(&TheCamera->m_viewMatrix, WorldPos); //TheCamera->m_viewMatrix * *WorldPos; // my function is brokey *sad sad* ;-;
+    if(screenPos.z <= *ms_fNearClipZ + 1.0f || screenPos.z >= *ms_fFarClipZ) return false;
+
+    float invDepth = 1.0f / screenPos.z;
+    float screenWidth = RsGlobal->maximumWidth, screenHeight = RsGlobal->maximumHeight;
+    float invScreenWidth = invDepth * screenWidth, invScreenHeight = invDepth * screenHeight;
+
+    screenPos.x *= invScreenWidth;
+    screenPos.y *= invScreenHeight;
+    *ScreenPos = screenPos;
+
+    *ScaleX = invScreenWidth * (50.0f / *ms_fFOV) * (1.4286f * screenHeight / screenWidth);
+    *ScaleY = invScreenHeight * (70.0f / *ms_fFOV);
+
+    return true;
+}
 void RenderBufferedLODLights()
 {
   #ifdef SCREEN_OPTIMISATION
@@ -221,7 +244,7 @@ void RenderBufferedLODLights()
         {
             vecCoronaCoords = corona.Coordinates;
 
-            if(CalcScreenCoors(&vecCoronaCoords, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true) && vecTransformedCoords.z <= corona.Range)
+            if(CalcScreenCoorsFast(&vecCoronaCoords, &vecTransformedCoords, &fComputedWidth, &fComputedHeight) && vecTransformedCoords.z <= corona.Range)
             {
               #ifdef SCREEN_OPTIMISATION
                 corona.OffScreen = !(vecTransformedCoords.x >= 0.0 && vecTransformedCoords.x <= nWidth && vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
@@ -907,6 +930,8 @@ extern "C" void OnAllModsLoaded()
     SET_TO(flWeatherFoggyness,      aml->GetSym(hGTASA, "_ZN8CWeather9FoggynessE"));
     SET_TO(ms_fTimeStep,            aml->GetSym(hGTASA, "_ZN6CTimer12ms_fTimeStepE"));
     SET_TO(ms_fFarClipZ,            aml->GetSym(hGTASA, "_ZN5CDraw12ms_fFarClipZE"));
+    SET_TO(ms_fNearClipZ,           aml->GetSym(hGTASA, "_ZN5CDraw13ms_fNearClipZE"));
+    SET_TO(ms_fFOV,                 aml->GetSym(hGTASA, "_ZN5CDraw7ms_fFOVE"));
     SET_TO(TheCamera,               aml->GetSym(hGTASA, "TheCamera"));
     SET_TO(gpCoronaTexture,         aml->GetSym(hGTASA, "gpCoronaTexture"));
     SET_TO(gpShadowExplosionTex,    aml->GetSym(hGTASA, "gpShadowExplosionTex"));
@@ -943,6 +968,11 @@ extern "C" void OnAllModsLoaded()
     SET_TO(RwRasterSetFromImage,    aml->GetSym(hGTASA, "_Z20RwRasterSetFromImageP8RwRasterP7RwImage"));
     SET_TO(RwTextureCreate,         aml->GetSym(hGTASA, "_Z15RwTextureCreateP8RwRaster"));
     SET_TO(RwImageDestroy,          aml->GetSym(hGTASA, "_Z14RwImageDestroyP7RwImage"));
+    SET_TO(ProcessLineOfSight,      aml->GetSym(hGTASA, "_ZN6CWorld18ProcessLineOfSightERK7CVectorS2_R9CColPointRP7CEntitybbbbbbbb"));
+    SET_TO(RwIm3DTransform,         aml->GetSym(hGTASA, "_Z15RwIm3DTransformP18RxObjSpace3DVertexjP11RwMatrixTagj"));
+    SET_TO(RwIm3DRenderIndexedPrimitive, aml->GetSym(hGTASA, "_Z28RwIm3DRenderIndexedPrimitive15RwPrimitiveTypePti"));
+    SET_TO(RwIm3DEnd,               aml->GetSym(hGTASA, "_Z9RwIm3DEndv"));
+    SET_TO(MatrixVectorMult,        aml->GetSym(hGTASA, "_ZmlRK7CMatrixRK7CVector"));
 
     // Hooks
   #ifdef AML32
