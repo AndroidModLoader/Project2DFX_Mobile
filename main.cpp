@@ -123,6 +123,12 @@ void                (*StoreStaticShadow)(uintptr_t ID, UInt8 Type, RwTexture *pT
 CPlayerPed*         (*FindPlayerPed)(int playerId);
 void                (*Pre_SearchLightCone)();
 void                (*Post_SearchLightCone)();
+RwImage*            (*RtPNGImageRead)(const char*);
+RwImage*            (*RwImageFindRasterFormat)(RwImage *ipImage, RwInt32 nRasterType, RwInt32 *npWidth, RwInt32 *npHeight, RwInt32 *npDepth, RwInt32 *npFormat);
+RwRaster*           (*RwRasterCreate)(RwInt32 width, RwInt32 height, RwInt32 depth, RwInt32 flags);
+RwRaster*           (*RwRasterSetFromImage)(RwRaster *raster, RwImage *image);
+RwTexture*          (*RwTextureCreate)(RwRaster *raster);
+RwBool              (*RwImageDestroy)(RwImage *image);
 
 void                (*RegisterLODCorona)(uintptr_t nID, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range);
 
@@ -170,6 +176,23 @@ bool                bRandomExplosionEffects, bReplaceSmokeTrailWithBulletTrail, 
 #endif
 
 // Funcs
+RwTexture* CPNGFileReadFromFile(const char* pFileName)
+{
+    RwTexture* pTexture = nullptr;
+    if (RwImage* pImage = RtPNGImageRead(pFileName))
+    {
+        int dwWidth, dwHeight, dwDepth, dwFlags;
+        RwImageFindRasterFormat(pImage, rwRASTERTYPETEXTURE, &dwWidth, &dwHeight, &dwDepth, &dwFlags);
+        RwRaster* pRaster;
+        if ( (pRaster = RwRasterCreate(dwWidth, dwHeight, dwDepth, dwFlags)) )
+        {
+            RwRasterSetFromImage(pRaster, pImage);
+            pTexture = RwTextureCreate(pRaster);
+        }
+        RwImageDestroy(pImage);
+    }
+    return pTexture;
+}
 void RenderBufferedLODLights()
 {
   #ifdef SCREEN_OPTIMISATION
@@ -275,9 +298,8 @@ void RegisterCustomCoronas()
 {
     unsigned short nModelID = 0xFFFE;
 
-    gpCustomCoronaTexture = NULL;
-    // Load custom corona
-    if(gpCustomCoronaTexture) gpCoronaTexture[1] = gpCustomCoronaTexture;
+    gpCustomCoronaTexture = CPNGFileReadFromFile(szCustomCoronaTexturePath);
+    //if(gpCustomCoronaTexture) gpCoronaTexture[1] = gpCustomCoronaTexture; // We dont need it here. LOD corona is loaded in rendering func
 
     auto itEnd = pFileContent->upper_bound(PackKey(nModelID, 0xFFFF));
     for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; ++it)
@@ -589,13 +611,14 @@ DECL_HOOKv(RenderEffects_MovingThings)
     }
     if(bRenderSearchlightEffects)
     {
-        CSearchLights::RenderSearchLightsSA();
+        // FPS killer feature. We're not ready for this on our smartphones...
+        // CSearchLights::RenderSearchLightsSA();
     }
 }
 DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
 {
     CEntity* ourEntity = LoadObjectInstance(a1, a2);
-    if(ourEntity && bCatchLamppostsNow && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex()))
+    if(bCatchLamppostsNow && ourEntity && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex()))
     {
         CSearchLights::RegisterLamppost(ourEntity);
     }
@@ -733,9 +756,10 @@ DECL_HOOKb(GenericLoad_IplStoreLoad)
   #ifdef AML32
     aml->Write8(pGTASA + 0x281FE4, 0x00); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 0;
   #else
-    aml->Write32(pGTASA + 0x33D258, 0x2A1F03E8); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 1;
+    aml->Write32(pGTASA + 0x33D258, 0x2A1F03E8); // CIplStore::RequestIplAndIgnore -> m_bDisableDynamicStreaming = 0;
   #endif
-    for (auto it = IPLStreamNames.cbegin(); it != IPLStreamNames.cend(); ++it)
+    auto cend = IPLStreamNames.cend();
+    for (auto it = IPLStreamNames.cbegin(); it != cend; ++it)
     {
         int iplSlot = FindIplSlot(it->c_str());
         if (iplSlot >= 0) RequestIplAndIgnore(iplSlot);
@@ -873,58 +897,64 @@ extern "C" void OnAllModsLoaded()
     fVegetationDrawDistance = cfg->GetFloat("VegetationDrawDistance", 0.0f, "IDETweaker");
     bLoadAllBinaryIPLs = cfg->GetBool("LoadAllBinaryIPLs", 0, "IDETweaker");
     bPreloadLODs = cfg->GetBool("PreloadLODs", 0, "IDETweaker");
-    
+
     bFestiveLights = cfg->GetBool("FestiveLights", 1, "Misc");
     bFestiveLightsAlways = cfg->GetBool("bFestiveLightsAlways", 0, "Misc");
 
     // Getters
-    SET_TO(ms_modelInfoPtrs, *(uintptr_t*)(pGTASA + BYBIT(0x6796D4, 0x850DB8)));
-    SET_TO(nActiveInterior, aml->GetSym(hGTASA, "_ZN5CGame8currAreaE"));
-    SET_TO(flWeatherFoggyness, aml->GetSym(hGTASA, "_ZN8CWeather9FoggynessE"));
-    SET_TO(ms_fTimeStep, aml->GetSym(hGTASA, "_ZN6CTimer12ms_fTimeStepE"));
-    SET_TO(ms_fFarClipZ, aml->GetSym(hGTASA, "_ZN5CDraw12ms_fFarClipZE"));
-    SET_TO(TheCamera, aml->GetSym(hGTASA, "TheCamera"));
-    SET_TO(gpCoronaTexture, aml->GetSym(hGTASA, "gpCoronaTexture"));
-    SET_TO(gpShadowExplosionTex, aml->GetSym(hGTASA, "gpShadowExplosionTex"));
-    SET_TO(RsGlobal, aml->GetSym(hGTASA, "RsGlobal"));
-    SET_TO(m_CurrentColours, aml->GetSym(hGTASA, "_ZN10CTimeCycle16m_CurrentColoursE"));
-    SET_TO(CurrentTimeHours, aml->GetSym(hGTASA, "_ZN6CClock18ms_nGameClockHoursE"));
-    SET_TO(CurrentTimeMinutes, aml->GetSym(hGTASA, "_ZN6CClock20ms_nGameClockMinutesE"));
+    SET_TO(ms_modelInfoPtrs,        *(uintptr_t*)(pGTASA + BYBIT(0x6796D4, 0x850DB8)));
+    SET_TO(nActiveInterior,         aml->GetSym(hGTASA, "_ZN5CGame8currAreaE"));
+    SET_TO(flWeatherFoggyness,      aml->GetSym(hGTASA, "_ZN8CWeather9FoggynessE"));
+    SET_TO(ms_fTimeStep,            aml->GetSym(hGTASA, "_ZN6CTimer12ms_fTimeStepE"));
+    SET_TO(ms_fFarClipZ,            aml->GetSym(hGTASA, "_ZN5CDraw12ms_fFarClipZE"));
+    SET_TO(TheCamera,               aml->GetSym(hGTASA, "TheCamera"));
+    SET_TO(gpCoronaTexture,         aml->GetSym(hGTASA, "gpCoronaTexture"));
+    SET_TO(gpShadowExplosionTex,    aml->GetSym(hGTASA, "gpShadowExplosionTex"));
+    SET_TO(RsGlobal,                aml->GetSym(hGTASA, "RsGlobal"));
+    SET_TO(m_CurrentColours,        aml->GetSym(hGTASA, "_ZN10CTimeCycle16m_CurrentColoursE"));
+    SET_TO(CurrentTimeHours,        aml->GetSym(hGTASA, "_ZN6CClock18ms_nGameClockHoursE"));
+    SET_TO(CurrentTimeMinutes,      aml->GetSym(hGTASA, "_ZN6CClock20ms_nGameClockMinutesE"));
     SET_TO(m_snTimeInMillisecondsPauseMode, aml->GetSym(hGTASA, "_ZN6CTimer31m_snTimeInMillisecondsPauseModeE"));
-    SET_TO(UnderWaterness, aml->GetSym(hGTASA, "_ZN8CWeather14UnderWaternessE"));
-    SET_TO(game_FPS, aml->GetSym(hGTASA, "_ZN6CTimer8game_FPSE"));
-    SET_TO(ms_fFarClipPlane, aml->GetSym(hGTASA, "_ZN9CRenderer16ms_fFarClipPlaneE"));
+    SET_TO(UnderWaterness,          aml->GetSym(hGTASA, "_ZN8CWeather14UnderWaternessE"));
+    SET_TO(game_FPS,                aml->GetSym(hGTASA, "_ZN6CTimer8game_FPSE"));
+    SET_TO(ms_fFarClipPlane,        aml->GetSym(hGTASA, "_ZN9CRenderer16ms_fFarClipPlaneE"));
 
-    SET_TO(GetIsTimeInRange, aml->GetSym(hGTASA, "_ZN6CClock16GetIsTimeInRangeEhh"));
-    SET_TO(FindGroundZFor3DCoord, aml->GetSym(hGTASA, "_ZN6CWorld21FindGroundZFor3DCoordEfffPbPP7CEntity"));
-    SET_TO(OpenFile, aml->GetSym(hGTASA, "_ZN8CFileMgr8OpenFileEPKcS1_"));
-    SET_TO(CloseFile, aml->GetSym(hGTASA, BYBIT("_ZN8CFileMgr9CloseFileEj", "_ZN8CFileMgr9CloseFileEy")));
-    SET_TO(LoadLine, aml->GetSym(hGTASA, BYBIT("_ZN11CFileLoader8LoadLineEj", "_ZN11CFileLoader8LoadLineEy")));
-    SET_TO(GetModelInfoUInt16, aml->GetSym(hGTASA, "_ZN10CModelInfo18GetModelInfoUInt16EPKcPt"));
-    SET_TO(FindIplSlot, aml->GetSym(hGTASA, "_ZN9CIplStore11FindIplSlotEPKc"));
-    SET_TO(RequestIplAndIgnore, aml->GetSym(hGTASA, "_ZN9CIplStore19RequestIplAndIgnoreEi"));
-    SET_TO(RequestModel, aml->GetSym(hGTASA, "_ZN10CStreaming12RequestModelEii"));
-    SET_TO(LoadAllRequestedModels, aml->GetSym(hGTASA, "_ZN10CStreaming22LoadAllRequestedModelsEb"));
-    SET_TO(RwRenderStateSet, aml->GetSym(hGTASA, "_Z16RwRenderStateSet13RwRenderStatePv"));
-    SET_TO(FlushSpriteBuffer, aml->GetSym(hGTASA, "_ZN7CSprite17FlushSpriteBufferEv"));
-    SET_TO(CalcScreenCoors, aml->GetSym(hGTASA, "_ZN7CSprite15CalcScreenCoorsERK5RwV3dPS0_PfS4_bb"));
+    SET_TO(GetIsTimeInRange,        aml->GetSym(hGTASA, "_ZN6CClock16GetIsTimeInRangeEhh"));
+    SET_TO(FindGroundZFor3DCoord,   aml->GetSym(hGTASA, "_ZN6CWorld21FindGroundZFor3DCoordEfffPbPP7CEntity"));
+    SET_TO(OpenFile,                aml->GetSym(hGTASA, "_ZN8CFileMgr8OpenFileEPKcS1_"));
+    SET_TO(CloseFile,               aml->GetSym(hGTASA, BYBIT("_ZN8CFileMgr9CloseFileEj", "_ZN8CFileMgr9CloseFileEy")));
+    SET_TO(LoadLine,                aml->GetSym(hGTASA, BYBIT("_ZN11CFileLoader8LoadLineEj", "_ZN11CFileLoader8LoadLineEy")));
+    SET_TO(GetModelInfoUInt16,      aml->GetSym(hGTASA, "_ZN10CModelInfo18GetModelInfoUInt16EPKcPt"));
+    SET_TO(FindIplSlot,             aml->GetSym(hGTASA, "_ZN9CIplStore11FindIplSlotEPKc"));
+    SET_TO(RequestIplAndIgnore,     aml->GetSym(hGTASA, "_ZN9CIplStore19RequestIplAndIgnoreEi"));
+    SET_TO(RequestModel,            aml->GetSym(hGTASA, "_ZN10CStreaming12RequestModelEii"));
+    SET_TO(LoadAllRequestedModels,  aml->GetSym(hGTASA, "_ZN10CStreaming22LoadAllRequestedModelsEb"));
+    SET_TO(RwRenderStateSet,        aml->GetSym(hGTASA, "_Z16RwRenderStateSet13RwRenderStatePv"));
+    SET_TO(FlushSpriteBuffer,       aml->GetSym(hGTASA, "_ZN7CSprite17FlushSpriteBufferEv"));
+    SET_TO(CalcScreenCoors,         aml->GetSym(hGTASA, "_ZN7CSprite15CalcScreenCoorsERK5RwV3dPS0_PfS4_bb"));
     SET_TO(RenderBufferedOneXLUSprite_Rotate_Aspect, aml->GetSym(hGTASA, "_ZN7CSprite40RenderBufferedOneXLUSprite_Rotate_AspectEfffffhhhsffh"));
-    SET_TO(StoreStaticShadow, aml->GetSym(hGTASA, BYBIT("_ZN8CShadows17StoreStaticShadowEjhP9RwTextureP7CVectorffffshhhfffbf", "_ZN8CShadows17StoreStaticShadowEyhP9RwTextureP7CVectorffffshhhfffbf")));
-    SET_TO(FindPlayerPed, aml->GetSym(hGTASA, "_Z13FindPlayerPedi"));
-    SET_TO(Pre_SearchLightCone, aml->GetSym(hGTASA, "_ZN5CHeli19Pre_SearchLightConeEv"));
-    SET_TO(Post_SearchLightCone, aml->GetSym(hGTASA, "_ZN5CHeli20Post_SearchLightConeEv"));
+    SET_TO(StoreStaticShadow,       aml->GetSym(hGTASA, BYBIT("_ZN8CShadows17StoreStaticShadowEjhP9RwTextureP7CVectorffffshhhfffbf", "_ZN8CShadows17StoreStaticShadowEyhP9RwTextureP7CVectorffffshhhfffbf")));
+    SET_TO(FindPlayerPed,           aml->GetSym(hGTASA, "_Z13FindPlayerPedi"));
+    SET_TO(Pre_SearchLightCone,     aml->GetSym(hGTASA, "_ZN5CHeli19Pre_SearchLightConeEv"));
+    SET_TO(Post_SearchLightCone,    aml->GetSym(hGTASA, "_ZN5CHeli20Post_SearchLightConeEv"));
+    SET_TO(RtPNGImageRead,          aml->GetSym(hGTASA, "_Z14RtPNGImageReadPKc"));
+    SET_TO(RwImageFindRasterFormat, aml->GetSym(hGTASA, "_Z23RwImageFindRasterFormatP7RwImageiPiS1_S1_S1_"));
+    SET_TO(RwRasterCreate,          aml->GetSym(hGTASA, "_Z14RwRasterCreateiiii"));
+    SET_TO(RwRasterSetFromImage,    aml->GetSym(hGTASA, "_Z20RwRasterSetFromImageP8RwRasterP7RwImage"));
+    SET_TO(RwTextureCreate,         aml->GetSym(hGTASA, "_Z15RwTextureCreateP8RwRaster"));
+    SET_TO(RwImageDestroy,          aml->GetSym(hGTASA, "_Z14RwImageDestroyP7RwImage"));
 
     // Hooks
   #ifdef AML32
-    HOOKBLX(LoadLevel_LoadingScreen, pGTASA + 0x466AB2 + 0x1);
+    HOOKBLX(LoadLevel_LoadingScreen,    pGTASA + 0x466AB2 + 0x1);
     HOOKBLX(RenderEffects_MovingThings, pGTASA + 0x3F6380 + 0x1);
-    HOOKBLX(RegisterCorona_FarClip, pGTASA + 0x5A44E8 + 0x1);
-    HOOKBLX(GameInit2_CranesInit, pGTASA + 0x473022 + 0x1);
+    HOOKBLX(RegisterCorona_FarClip,     pGTASA + 0x5A44E8 + 0x1);
+    HOOKBLX(GameInit2_CranesInit,       pGTASA + 0x473022 + 0x1);
   #else
-    HOOKBL(LoadLevel_LoadingScreen, pGTASA + 0x551E20);
-    HOOKBL(RenderEffects_MovingThings, pGTASA + 0x4D88FC);
-    HOOKBL(RegisterCorona_FarClip, pGTASA + 0x6C8438);
-    HOOKBL(GameInit2_CranesInit, pGTASA + 0x55F748);
+    HOOKBL(LoadLevel_LoadingScreen,     pGTASA + 0x551E20);
+    HOOKBL(RenderEffects_MovingThings,  pGTASA + 0x4D88FC);
+    HOOKBL(RegisterCorona_FarClip,      pGTASA + 0x6C8438);
+    HOOKBL(GameInit2_CranesInit,        pGTASA + 0x55F748);
   #endif
 
     // Patches
