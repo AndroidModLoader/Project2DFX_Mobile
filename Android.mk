@@ -7,7 +7,7 @@ ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 else
 	LOCAL_MODULE := Project2DFX64
 endif
-LOCAL_SRC_FILES := mod/logger.cpp mod/config.cpp main.cpp searchlights.cpp
+LOCAL_SRC_FILES := mod/logger.cpp mod/config.cpp main.cpp searchlights.cpp limits.cpp
 LOCAL_CFLAGS += -mfloat-abi=softfp -DNDEBUG -std=c++17 -ftree-vectorize
 LOCAL_LDLIBS += -llog
 include $(BUILD_SHARED_LIBRARY)

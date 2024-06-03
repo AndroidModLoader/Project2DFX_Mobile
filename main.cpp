@@ -166,6 +166,7 @@ bool                bRandomExplosionEffects, bReplaceSmokeTrailWithBulletTrail, 
 
 #ifdef AML64
     float           *MaxObjectsDrawDistance;
+    float           *MaxStaticShadowsDrawDistance;
 #endif
 
 // Funcs
@@ -785,31 +786,13 @@ DECL_HOOKv(CoronasRegisterFestiveCoronaForEntity, uintptr_t nID, CEntity* entity
 }
 
 // Patches
-uintptr_t CoronaFarClip_BackTo, LoadScene_BackTo;
-extern "C" uintptr_t CoronaFarClip_Patch(C2dEffect *effect)
-{
-    effect->light.m_fCoronaFarClip = 3000.0f;
-    return CoronaFarClip_BackTo;
-}
+uintptr_t LoadScene_BackTo;
 extern "C" uintptr_t LoadScene_Patch(CEntity *entity)
 {
     if(entity && entity->m_pLod) lods.push_back(entity->m_pLod);
     return LoadScene_BackTo;
 }
 #ifdef AML32
-__attribute__((optnone)) __attribute__((naked)) void CoronaFarClip_Inject(void)
-{
-    asm volatile(
-        "VMOV S1, R1\n" // org
-        "VMOV S10, R3\n" // org
-        "PUSH {R0-R2}\n"
-        "MOV R0, R8\n"
-        "BL CoronaFarClip_Patch\n"
-        "MOV R3, R0\n"
-        "POP {R0-R2}\n"
-        "VLDR S4, [R8, #0x14]\n" // org
-        "MOV PC, R3");
-}
 __attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
 {
     asm volatile(
@@ -846,7 +829,7 @@ extern "C" void OnAllModsLoaded()
 
     // Config
     bRenderLodLights = cfg->GetBool("RenderLodLights", true, "LodLights");
-    numCoronas = cfg->GetInt("MaxNumberOfLodLights", 25000, "LodLights");
+    numCoronas = cfg->GetInt("MaxNumberOfLodLights", 18000, "LodLights");
     fCoronaRadiusMultiplier = cfg->GetFloat("CoronaRadiusMultiplier", 1.0f, "LodLights");
     bSlightlyIncreaseRadiusWithDistance = cfg->GetBool("SlightlyIncreaseRadiusWithDistance", 1, "LodLights");
     if(!strcasecmp(cfg->GetString("CoronaFarClip", "auto", "LodLights"), "auto"))
@@ -890,6 +873,7 @@ extern "C" void OnAllModsLoaded()
     fVegetationDrawDistance = cfg->GetFloat("VegetationDrawDistance", 0.0f, "IDETweaker");
     bLoadAllBinaryIPLs = cfg->GetBool("LoadAllBinaryIPLs", 0, "IDETweaker");
     bPreloadLODs = cfg->GetBool("PreloadLODs", 0, "IDETweaker");
+    
     bFestiveLights = cfg->GetBool("FestiveLights", 1, "Misc");
     bFestiveLightsAlways = cfg->GetBool("bFestiveLightsAlways", 0, "Misc");
 
@@ -934,12 +918,12 @@ extern "C" void OnAllModsLoaded()
   #ifdef AML32
     HOOKBLX(LoadLevel_LoadingScreen, pGTASA + 0x466AB2 + 0x1);
     HOOKBLX(RenderEffects_MovingThings, pGTASA + 0x3F6380 + 0x1);
-    HOOKBLX(RegisterCorona_FarClip, pGTASA + 0x5A44E8 + 0x1); // CoronaFarClip_Inject replacement
+    HOOKBLX(RegisterCorona_FarClip, pGTASA + 0x5A44E8 + 0x1);
     HOOKBLX(GameInit2_CranesInit, pGTASA + 0x473022 + 0x1);
   #else
     HOOKBL(LoadLevel_LoadingScreen, pGTASA + 0x551E20);
     HOOKBL(RenderEffects_MovingThings, pGTASA + 0x4D88FC);
-    HOOKBL(RegisterCorona_FarClip, pGTASA + 0x6C8438); // CoronaFarClip_Inject replacement
+    HOOKBL(RegisterCorona_FarClip, pGTASA + 0x6C8438);
     HOOKBL(GameInit2_CranesInit, pGTASA + 0x55F748);
   #endif
 
@@ -947,8 +931,6 @@ extern "C" void OnAllModsLoaded()
   #ifdef AML32
     aml->Write(pGTASA + 0x362EC8, "\xC4\xF2\x09\x40", 4); // 50.0 -> 548.0 (instead of 550.0 on PC)
     if(*(uint32_t*)(pGTASA + 0x5A3644) == 0x6FB4F5BA) aml->Write(pGTASA + 0x5A3644, "\xBA\xF5\x61\x5F", 4); // Sun reflections
-    //CoronaFarClip_BackTo = pGTASA + 0x5A443C + 0x1;
-    //aml->Redirect(pGTASA + 0x5A4430 + 0x1, (uintptr_t)CoronaFarClip_Inject); // brokey, replacement above
   #else
     aml->Write32(pGTASA + 0x432DF0, 0x90001868); // 50.0 -> 550.0 (1)
     aml->Write32(pGTASA + 0x432DF8, 0xBD4B8508); // 50.0 -> 550.0 (2)
@@ -1013,8 +995,31 @@ extern "C" void OnAllModsLoaded()
     }
     if (fStaticShadowsDrawDistance)
     {
-        // In JPatch! and also...
-        // 5BD49E ?
+        // In JPatch! + code below
+      #ifdef AML32
+
+      #else
+        SET_TO(MaxStaticShadowsDrawDistance, pGTASA + 0x70BD9C);
+        aml->Unprot((uintptr_t)MaxStaticShadowsDrawDistance);
+        *MaxStaticShadowsDrawDistance = fStaticShadowsDrawDistance;
+
+        aml->Write32(pGTASA + 0x6E1D30, 0xD0000148);
+        aml->Write32(pGTASA + 0x6E1D3C, 0xBD4D9D08); // CShadows::UpdatePermanentShadows
+
+        aml->Write32(pGTASA + 0x4D38F8, 0x900011C8);
+        aml->Write32(pGTASA + 0x4D3904, 0xBD4D9D08); // CFireManager::Update
+
+        aml->Write32(pGTASA + 0x4331A0, 0x900016C8);
+        aml->Write32(pGTASA + 0x4331A4, 0xBD4D9D06); // CTrafficLights::DisplayActualLight
+
+        aml->Write32(pGTASA + 0x3E8510, 0xF0001908);
+        aml->Write32(pGTASA + 0x3E8518, 0xBD4D9D06); // CPickups::DoMineEffects
+
+        aml->Write32(pGTASA + 0x3E8040, 0xF0001908);
+        aml->Write32(pGTASA + 0x3E8048, 0xBD4D9D08); // CPickups::DoCollectableEffects
+
+        // A part for 'CEntity::ProcessLightsForEntity' is in JPatch. This should be done in JPatch itself.
+      #endif
     }
     if (fStaticShadowsIntensity)
     {
