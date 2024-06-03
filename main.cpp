@@ -4,12 +4,12 @@
 #include <string>
 #include <chrono>
 
+//#define SCREEN_OPTIMISATION // it eats CPU on weaker phones. No.
+
 #ifdef AML32
     #include "GTASA_STRUCTS.h"
-    #define BYVER(__for32, __for64) (__for32)
 #else
     #include "GTASA_STRUCTS_210.h"
-    #define BYVER(__for32, __for64) (__for64)
 #endif
 #include <searchlights.h>
 
@@ -95,6 +95,7 @@ int*                nActiveInterior;
 float               *flWeatherFoggyness, *ms_fTimeStep, *ms_fFarClipZ;
 CCamera*            TheCamera;
 RwTexture**         gpCoronaTexture;
+RwTexture**         gpShadowExplosionTex;
 CColourSet*         m_CurrentColours;
 uint8_t             *CurrentTimeHours, *CurrentTimeMinutes;
 uint32_t            *m_snTimeInMillisecondsPauseMode;
@@ -118,6 +119,7 @@ void                (*RwRenderStateSet)(RwRenderState, void*);
 void                (*FlushSpriteBuffer)();
 bool                (*CalcScreenCoors)(CVector*, CVector*, float*, float*, bool, bool);
 void                (*RenderBufferedOneXLUSprite_Rotate_Aspect)(float,float,float,float,float,uint8_t,uint8_t,uint8_t,short,float,float,uint8_t);
+void                (*StoreStaticShadow)(uintptr_t ID, UInt8 Type, RwTexture *pTexture, CVector *pCoors, float ForwardX, float ForwardY, float SideX, float SideY, int Brightness, int Red, int Green, int Blue, float ShadowDepth, float TextureScale, float MaxDist, float Margin, bool bFromTree);
 CPlayerPed*         (*FindPlayerPed)(int playerId);
 void                (*Pre_SearchLightCone)();
 void                (*Post_SearchLightCone)();
@@ -169,12 +171,12 @@ bool                bRandomExplosionEffects, bReplaceSmokeTrailWithBulletTrail, 
 // Funcs
 void RenderBufferedLODLights()
 {
+  #ifdef SCREEN_OPTIMISATION
     int nWidth = RsGlobal->maximumWidth;
     int nHeight = RsGlobal->maximumHeight;
+  #endif
 
     RwRaster* pTargetRaster = (gpCustomCoronaTexture != NULL) ? gpCustomCoronaTexture->raster : gpCoronaTexture[1]->raster;
-    CVector* pCamPos = &TheCamera->GetPosition();
-
     CVector vecCoronaCoords, vecTransformedCoords;
     float fComputedWidth, fComputedHeight;
 
@@ -191,15 +193,20 @@ void RenderBufferedLODLights()
     for (size_t i = 0; i < size; ++i)
     {
         CLODRegisteredCorona& corona = LODLightsCoronas[i];
-        if (corona.Identifier && corona.Intensity > 0)
+        if (corona.Identifier && corona.Intensity != 0)
         {
             vecCoronaCoords = corona.Coordinates;
 
             if(CalcScreenCoors(&vecCoronaCoords, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true) && vecTransformedCoords.z <= corona.Range)
             {
+              #ifdef SCREEN_OPTIMISATION
+                corona.OffScreen = !(vecTransformedCoords.x >= 0.0 && vecTransformedCoords.x <= nWidth && vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
+                if(corona.OffScreen) continue;
+              #endif
+
                 float fInvFarClip = 20.0f / vecTransformedCoords.z;
                 float fHalfRange = corona.Range * 0.5f;
-                short nFadeIntensity = (short)(corona.Intensity * (vecTransformedCoords.z > fHalfRange ? 1.0f - (vecTransformedCoords.z - fHalfRange) / fHalfRange : 1.0f));
+                short nFadeIntensity = (short)(corona.Intensity * (vecTransformedCoords.z > fHalfRange ? (1.0f - (vecTransformedCoords.z - fHalfRange) / fHalfRange) : 1.0f));
                 float fColourFogMult = fminf(40.0f, vecTransformedCoords.z) * weatherFogScaled + 1.0f;
                 float fColourFogMultInv = 1.0f / fColourFogMult;
 
@@ -274,7 +281,7 @@ void RegisterCustomCoronas()
     auto itEnd = pFileContent->upper_bound(PackKey(nModelID, 0xFFFF));
     for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; ++it)
     {
-        auto target = it->second;
+        auto& target = it->second;
         m_pLampposts->push_back(CLamppostInfo(target.vecPos, target.colour, target.fCustomSizeMult, target.nCoronaShowMode, target.nNoDistance, target.nDrawSearchlight, 0.0f));
     }
 }
@@ -323,9 +330,9 @@ bool IsBlinkingNeeded(int BlinkType)
 inline void RegisterCoronaMain(uintptr_t nID, unsigned char R, unsigned char G, unsigned char B, unsigned char A, const CVector& Position, float Size, float Range)
 {
     CVector vecPosToCheck = Position;
-    CVector* pCamPos = &TheCamera->GetPosition();
+    CVector pCamPos = TheCamera->GetPosition();
 
-    if (Range * Range >= (pCamPos->x - vecPosToCheck.x)*(pCamPos->x - vecPosToCheck.x) + (pCamPos->y - vecPosToCheck.y)*(pCamPos->y - vecPosToCheck.y))
+    if (Range * Range >= (pCamPos.x - vecPosToCheck.x)*(pCamPos.x - vecPosToCheck.x) + (pCamPos.y - vecPosToCheck.y)*(pCamPos.y - vecPosToCheck.y))
     {
         // Is corona already present?
         CLODRegisteredCorona* pSuitableSlot;
@@ -393,14 +400,16 @@ void LODLightsUpdate()
     auto pNode = LODLightsUsedList.First();
     if (pNode)
     {
+        CLODRegisteredCorona* corona;
         while (pNode != &LODLightsUsedList)
         {
-            unsigned int nIndex = pNode->GetFrom()->Identifier;
+            corona = pNode->GetFrom();
+            unsigned int nIndex = corona->Identifier;
             auto pNext = pNode->GetNextNode();
-            pNode->GetFrom()->Update();
+            corona->Update();
 
             // Did it become invalid?
-            if (!pNode->GetFrom()->Identifier)
+            if (!corona->Identifier)
             {
                 // Remove from used list
                 pNode->Add(&LODLightsFreeList);
@@ -425,7 +434,7 @@ void RegisterLODLights()
         else if (nTime < 3 * 60) bAlpha = 255;
         else bAlpha = (uint8_t)((-15.0f / 16.0f) * nTime + 424.0f);
 
-        CVector* pCamPos = &TheCamera->GetPosition();
+        CVector pCamPos = TheCamera->GetPosition();
 
         CLamppostInfo* target;
         CVector targetPos;
@@ -437,7 +446,7 @@ void RegisterLODLights()
             // The line below is moved to 'CSearchLights::RegisterLamppost'
             //if ((targetPos.z >= -15.0f) && (targetPos.z <= 1030.0f))
             {
-                float fDist = (*pCamPos - targetPos).MagnitudeSqr();
+                float fDist = (pCamPos - targetPos).MagnitudeSqr();
                 if (target->nNoDistance || (fDist > 250.0f*250.0f && fDist < fCurCoronaFarClipSQR))
                 {
                     fDist = sqrtf(fDist);
@@ -456,7 +465,7 @@ void RegisterLODLights()
                             RegisterLODCorona((uintptr_t)target, Color.r, Color.g, Color.b, (bAlpha * (Color.a * 0.00390625f)), targetPos, (fRadius * target->fCustomSizeMult * fCoronaRadiusMultiplier), fCurCoronaFarClip);
                             if (bRenderStaticShadowsForLODs)
                             {
-                                // StoreStaticShadow
+                                StoreStaticShadow((uintptr_t)target, 2 /*SHADOW_ADDITIVE*/, *gpShadowExplosionTex, &targetPos, 8.0f, 0.0f, 0.0f, -8.0f, bAlpha, (Color.r / 3), (Color.g / 3), (Color.b / 3), 15.0f, 1.0f, fCoronaFarClip, false, false);
                             }
                         }
                         else
@@ -585,7 +594,10 @@ DECL_HOOKv(RenderEffects_MovingThings)
 DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
 {
     CEntity* ourEntity = LoadObjectInstance(a1, a2);
-    if(ourEntity && bCatchLamppostsNow && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex())) CSearchLights::RegisterLamppost(ourEntity);
+    if(ourEntity && bCatchLamppostsNow && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex()))
+    {
+        CSearchLights::RegisterLamppost(ourEntity);
+    }
     return ourEntity;
 }
 DECL_HOOKv(RegisterCorona_FarClip, uintptr_t id, CEntity *entity, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha, CVector *pos, float radius, float farClip, void *texture, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
@@ -605,7 +617,7 @@ DECL_HOOKv(GameInit2_CranesInit)
         LODLightsFreeList.Init();
         LODLightsUsedList.Init();
 
-        for (size_t i = 0; i < LODLightsLinkedList.size(); ++i)
+        for (size_t i = 0; i < numCoronas; ++i)
         {
             LODLightsLinkedList[i].Add(&LODLightsFreeList);
             LODLightsLinkedList[i].SetEntry(&LODLightsCoronas[i]);
@@ -889,6 +901,7 @@ extern "C" void OnAllModsLoaded()
     SET_TO(ms_fFarClipZ, aml->GetSym(hGTASA, "_ZN5CDraw12ms_fFarClipZE"));
     SET_TO(TheCamera, aml->GetSym(hGTASA, "TheCamera"));
     SET_TO(gpCoronaTexture, aml->GetSym(hGTASA, "gpCoronaTexture"));
+    SET_TO(gpShadowExplosionTex, aml->GetSym(hGTASA, "gpShadowExplosionTex"));
     SET_TO(RsGlobal, aml->GetSym(hGTASA, "RsGlobal"));
     SET_TO(m_CurrentColours, aml->GetSym(hGTASA, "_ZN10CTimeCycle16m_CurrentColoursE"));
     SET_TO(CurrentTimeHours, aml->GetSym(hGTASA, "_ZN6CClock18ms_nGameClockHoursE"));
@@ -912,6 +925,7 @@ extern "C" void OnAllModsLoaded()
     SET_TO(FlushSpriteBuffer, aml->GetSym(hGTASA, "_ZN7CSprite17FlushSpriteBufferEv"));
     SET_TO(CalcScreenCoors, aml->GetSym(hGTASA, "_ZN7CSprite15CalcScreenCoorsERK5RwV3dPS0_PfS4_bb"));
     SET_TO(RenderBufferedOneXLUSprite_Rotate_Aspect, aml->GetSym(hGTASA, "_ZN7CSprite40RenderBufferedOneXLUSprite_Rotate_AspectEfffffhhhsffh"));
+    SET_TO(StoreStaticShadow, aml->GetSym(hGTASA, BYBIT("_ZN8CShadows17StoreStaticShadowEjhP9RwTextureP7CVectorffffshhhfffbf", "_ZN8CShadows17StoreStaticShadowEyhP9RwTextureP7CVectorffffshhhfffbf")));
     SET_TO(FindPlayerPed, aml->GetSym(hGTASA, "_Z13FindPlayerPedi"));
     SET_TO(Pre_SearchLightCone, aml->GetSym(hGTASA, "_ZN5CHeli19Pre_SearchLightConeEv"));
     SET_TO(Post_SearchLightCone, aml->GetSym(hGTASA, "_ZN5CHeli20Post_SearchLightConeEv"));

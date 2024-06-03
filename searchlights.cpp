@@ -402,22 +402,27 @@ bool CSearchLights::IsModelALamppost(uint16_t nModelId)
 void CSearchLights::RegisterLamppost(CEntity* pObj)
 {
     unsigned short      nModelID = pObj->GetModelIndex();
-    CMatrix             dummyMatrix;
     CSimpleTransform&   objTransform = pObj->GetTransform();
+    CMatrix             dumboMatrix;
+    CMatrix*            dummyMatrix = pObj->m_matrix;
 
-    if (objTransform.m_vPosn.x == 0.0f && objTransform.m_vPosn.y == 0.0f)
-        return;
+    if (objTransform.m_vPosn.x == 0.0f && objTransform.m_vPosn.y == 0.0f) return;
 
-    dummyMatrix.SetTranslateOnly(objTransform.m_vPosn);
-    dummyMatrix.SetRotateZOnly(objTransform.m_fHeading);
+    if(!dummyMatrix)
+    {
+        dumboMatrix.SetTranslateOnly(objTransform.m_vPosn);
+        dumboMatrix.SetRotateZOnly(objTransform.m_fHeading);
+        dummyMatrix = &dumboMatrix;
+    }
 
     auto itEnd = pFileContent->upper_bound(PackKey(nModelID, 0xFFFF));
-    for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; it++)
+    for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; ++it)
     {
-        CVector pos = dummyMatrix * it->second.vecPos;
+        auto& target = it->second;
+        CVector pos = *dummyMatrix * target.vecPos;
         if(pos.z >= -15.0f && pos.z <= 1030.0f) // moved this from 'RegisterLODLights'
         {
-            m_pLampposts->push_back(CLamppostInfo(pos, it->second.colour, it->second.fCustomSizeMult, it->second.nCoronaShowMode, it->second.nNoDistance, it->second.nDrawSearchlight, pObj->GetTransform().m_fHeading));
+            m_pLampposts->push_back(CLamppostInfo(*dummyMatrix * target.vecPos, target.colour, target.fCustomSizeMult, target.nCoronaShowMode, target.nNoDistance, target.nDrawSearchlight, objTransform.m_fHeading));
         }
     }
 }
