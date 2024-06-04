@@ -182,6 +182,7 @@ bool                bRandomExplosionEffects, bReplaceSmokeTrailWithBulletTrail, 
 #endif
 
 // Funcs
+void Init_MiniLA();
 RwTexture* CPNGFileReadFromFile(const char* pFileName)
 {
     RwTexture* pTexture = nullptr;
@@ -1291,4 +1292,6 @@ extern "C" void OnAllModsLoaded()
   #else
     aml->Write32(pGTASA + 0x4D8664, 0x1E204120);
   #endif
+
+    Init_MiniLA();
 }
