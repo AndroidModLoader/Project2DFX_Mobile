@@ -5,6 +5,7 @@
 #include <chrono>
 
 //#define SCREEN_OPTIMISATION // it eats CPU on weaker phones. No.
+#define CALCSCREENCOORS_SPEEDUP
 
 #ifdef AML32
     #include "GTASA_STRUCTS.h"
@@ -198,21 +199,24 @@ RwTexture* CPNGFileReadFromFile(const char* pFileName)
     }
     return pTexture;
 }
-inline bool CalcScreenCoorsFast(CVector* WorldPos, CVector* ScreenPos, float* ScaleX, float* ScaleY)
+static float CalcScreenCoors_Width;
+static float CalcScreenCoors_Height;
+static float CalcScreenCoors_50FOV;
+static float CalcScreenCoors_70FOV;
+inline bool CalcScreenCoorsFast(CVector* WorldPos, CVector* ScreenPos, float* ScaleX, float* ScaleY) // +1 FPS. Better than nothing...
 {
     CVector screenPos = MatrixVectorMult(&TheCamera->m_viewMatrix, WorldPos); //TheCamera->m_viewMatrix * *WorldPos; // my function is brokey *sad sad* ;-;
     if(screenPos.z <= *ms_fNearClipZ + 1.0f || screenPos.z >= *ms_fFarClipZ) return false;
 
     float invDepth = 1.0f / screenPos.z;
-    float screenWidth = RsGlobal->maximumWidth, screenHeight = RsGlobal->maximumHeight;
-    float invScreenWidth = invDepth * screenWidth, invScreenHeight = invDepth * screenHeight;
+    float invScreenWidth = invDepth * CalcScreenCoors_Width, invScreenHeight = invDepth * CalcScreenCoors_Height;
 
     screenPos.x *= invScreenWidth;
     screenPos.y *= invScreenHeight;
     *ScreenPos = screenPos;
 
-    *ScaleX = invScreenWidth * (50.0f / *ms_fFOV) * (1.4286f * screenHeight / screenWidth);
-    *ScaleY = invScreenHeight * (70.0f / *ms_fFOV);
+    *ScaleX = invScreenWidth * CalcScreenCoors_50FOV;
+    *ScaleY = invScreenHeight * CalcScreenCoors_70FOV;
 
     return true;
 }
@@ -223,8 +227,15 @@ void RenderBufferedLODLights()
     int nHeight = RsGlobal->maximumHeight;
   #endif
 
+  #ifdef CALCSCREENCOORS_SPEEDUP
+    CalcScreenCoors_Width = RsGlobal->maximumWidth;
+    CalcScreenCoors_Height = RsGlobal->maximumHeight;
+    CalcScreenCoors_50FOV = (50.0f / *ms_fFOV) * (1.4286f * CalcScreenCoors_Height / CalcScreenCoors_Width);
+    CalcScreenCoors_70FOV = (70.0f / *ms_fFOV);
+  #endif
+
     RwRaster* pTargetRaster = (gpCustomCoronaTexture != NULL) ? gpCustomCoronaTexture->raster : gpCoronaTexture[1]->raster;
-    CVector vecCoronaCoords, vecTransformedCoords;
+    CVector vecTransformedCoords;
     float fComputedWidth, fComputedHeight;
 
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)false);
@@ -236,15 +247,17 @@ void RenderBufferedLODLights()
 
     float weatherFogScaled = *flWeatherFoggyness * 0.025f;
 
-    int size = LODLightsCoronas.size();
+    size_t size = LODLightsCoronas.size();
     for (size_t i = 0; i < size; ++i)
     {
         CLODRegisteredCorona& corona = LODLightsCoronas[i];
-        if (corona.Identifier && corona.Intensity != 0)
+        if (corona.Identifier != 0 && corona.Intensity != 0)
         {
-            vecCoronaCoords = corona.Coordinates;
-
-            if(CalcScreenCoorsFast(&vecCoronaCoords, &vecTransformedCoords, &fComputedWidth, &fComputedHeight) && vecTransformedCoords.z <= corona.Range)
+          #ifdef CALCSCREENCOORS_SPEEDUP
+            if(CalcScreenCoorsFast(&corona.Coordinates, &vecTransformedCoords, &fComputedWidth, &fComputedHeight) && vecTransformedCoords.z <= corona.Range)
+          #else
+            if(CalcScreenCoors(&corona.Coordinates, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true) && vecTransformedCoords.z <= corona.Range)
+          #endif
             {
               #ifdef SCREEN_OPTIMISATION
                 corona.OffScreen = !(vecTransformedCoords.x >= 0.0 && vecTransformedCoords.x <= nWidth && vecTransformedCoords.y >= 0.0 && vecTransformedCoords.y <= nHeight);
@@ -257,7 +270,7 @@ void RenderBufferedLODLights()
                 float fColourFogMult = fminf(40.0f, vecTransformedCoords.z) * weatherFogScaled + 1.0f;
                 float fColourFogMultInv = 1.0f / fColourFogMult;
 
-                RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight * fColourFogMult, corona.Red * fColourFogMultInv, corona.Green * fColourFogMultInv, corona.Blue * fColourFogMultInv, nFadeIntensity, fInvFarClip, 0.0, 255);
+                RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight * fColourFogMult, corona.Red * fColourFogMultInv, corona.Green * fColourFogMultInv, corona.Blue * fColourFogMultInv, nFadeIntensity, fInvFarClip, 0.0f, 255);
             }
             else
             {
@@ -641,7 +654,7 @@ DECL_HOOKv(RenderEffects_MovingThings)
 DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
 {
     CEntity* ourEntity = LoadObjectInstance(a1, a2);
-    if(bCatchLamppostsNow && ourEntity && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex()))
+    if(bCatchLamppostsNow && ourEntity && ourEntity->m_nInterior == 0 && CSearchLights::IsModelALamppost(ourEntity->GetModelIndex()))
     {
         CSearchLights::RegisterLamppost(ourEntity);
     }
