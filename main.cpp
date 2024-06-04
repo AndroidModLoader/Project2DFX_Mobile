@@ -865,6 +865,90 @@ __attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
         "LDRB.W R0, [R6, #0x38]\n" // org
         "MOV PC, R11");
 }
+
+uintptr_t StaticShadowsDrawDistance_BackTo1, StaticShadowsDrawDistance_BackTo2, StaticShadowsDrawDistance_BackTo3, StaticShadowsDrawDistance_BackTo4, StaticShadowsDrawDistance_BackTo5, StaticShadowsDrawDistance_BackTo6;
+__attribute__((optnone)) __attribute__((naked)) void StaticShadowsDrawDistance_Inject1(void)
+{
+    asm volatile(
+        "MOV R9, %0\n"
+    :: "r" (fStaticShadowsDrawDistance));
+    asm volatile(
+        "MOV R12, %0\n"
+    :: "r" (StaticShadowsDrawDistance_BackTo1));
+    asm volatile(
+        "LDR R0, [R3, #0x2C]\n" // org
+        "MOV PC, R12");
+}
+__attribute__((optnone)) __attribute__((naked)) void StaticShadowsDrawDistance_Inject2(void)
+{
+    asm volatile(
+        "MOV R12, %0\n"
+    :: "r" (StaticShadowsDrawDistance_BackTo2));
+    asm volatile(
+        "MOV R0, %0\n"
+    :: "r" (fStaticShadowsDrawDistance));
+    asm volatile(
+        "STR R0, [SP, #0x28]\n" // org
+        "MOV PC, R12");
+}
+__attribute__((optnone)) __attribute__((naked)) void StaticShadowsDrawDistance_Inject3(void)
+{
+    asm volatile(
+        "MOV R12, %0\n"
+    :: "r" (StaticShadowsDrawDistance_BackTo3));
+    asm volatile(
+        "MOV R1, %0\n"
+    :: "r" (fStaticShadowsDrawDistance));
+    asm volatile(
+        "LDR R0, [R3, #0xC]\n" // org
+        "STR R0, [SP, #0x50]\n" // org
+        "VLDR S4, [SP, #0x50]\n" // org
+        "MOV PC, R12");
+}
+__attribute__((optnone)) __attribute__((naked)) void StaticShadowsDrawDistance_Inject4(void)
+{
+    asm volatile(
+        "VCVT.F32.U32 S6, S6\n" // org
+        "PUSH {R0}\n"
+    );
+    asm volatile(
+        "MOV R12, %0\n"
+    :: "r" (StaticShadowsDrawDistance_BackTo4));
+    asm volatile(
+        "MOV R1, %0\n"
+    :: "r" (fStaticShadowsDrawDistance));
+    asm volatile(
+        "POP {R0}\n"
+        "MOV PC, R12");
+}
+__attribute__((optnone)) __attribute__((naked)) void StaticShadowsDrawDistance_Inject5(void)
+{
+    asm volatile(
+        "MOV R12, %0\n"
+    :: "r" (StaticShadowsDrawDistance_BackTo5));
+    asm volatile(
+        "MOV R0, %0\n"
+    :: "r" (fStaticShadowsDrawDistance));
+    asm volatile(
+        "STRD R3, R1, [SP, #0x20]\n" // org
+        "MOV PC, R12");
+}
+__attribute__((optnone)) __attribute__((naked)) void StaticShadowsDrawDistance_Inject6(void)
+{
+    asm volatile(
+        "ADD.W R8, SP, #0x48\n" // org
+        "PUSH {R0}\n"
+    );
+    asm volatile(
+        "MOV R12, %0\n"
+    :: "r" (StaticShadowsDrawDistance_BackTo6));
+    asm volatile(
+        "MOV R10, %0\n"
+    :: "r" (fStaticShadowsDrawDistance));
+    asm volatile(
+        "POP {R0}\n"
+        "MOV PC, R12");
+}
 #else
 __attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
 {
@@ -1070,7 +1154,23 @@ extern "C" void OnAllModsLoaded()
     {
         // In JPatch! + code below
       #ifdef AML32
-
+        StaticShadowsDrawDistance_BackTo1 = pGTASA + 0x5BD4A8 + 0x1;
+        aml->Redirect(pGTASA + 0x5BD49E + 0x1, (uintptr_t)StaticShadowsDrawDistance_Inject1); // CShadows::UpdatePermanentShadows
+        
+        StaticShadowsDrawDistance_BackTo2 = pGTASA + 0x5BD58C + 0x1;
+        aml->Redirect(pGTASA + 0x5BD584 + 0x1, (uintptr_t)StaticShadowsDrawDistance_Inject2); // CShadows::UpdatePermanentShadows
+        
+        StaticShadowsDrawDistance_BackTo3 = pGTASA + 0x3F19A2 + 0x1;
+        aml->Redirect(pGTASA + 0x3F1996 + 0x1, (uintptr_t)StaticShadowsDrawDistance_Inject3); // CFireManager::Update
+        
+        StaticShadowsDrawDistance_BackTo4 = pGTASA + 0x363124 + 0x1;
+        aml->Redirect(pGTASA + 0x36311C + 0x1, (uintptr_t)StaticShadowsDrawDistance_Inject4); // CTrafficLights::DisplayActualLight
+        
+        StaticShadowsDrawDistance_BackTo5 = pGTASA + 0x3208FA + 0x1;
+        aml->Redirect(pGTASA + 0x3208F0 + 0x1, (uintptr_t)StaticShadowsDrawDistance_Inject5); // CPickups::DoMineEffects
+        
+        StaticShadowsDrawDistance_BackTo6 = pGTASA + 0x320518 + 0x1;
+        aml->Redirect(pGTASA + 0x320510 + 0x1, (uintptr_t)StaticShadowsDrawDistance_Inject6); // CPickups::DoCollectableEffects
       #else
         SET_TO(MaxStaticShadowsDrawDistance, pGTASA + 0x70BD9C);
         aml->Unprot((uintptr_t)MaxStaticShadowsDrawDistance);
@@ -1097,7 +1197,8 @@ extern "C" void OnAllModsLoaded()
     if (fStaticShadowsIntensity)
     {
         fStaticShadowsIntensity *= 0.00390625f;
-        // In JPatch!
+        // All patches are in CEntity::ProcessLightsForEntity
+        // That means JPatch does it`s work and we cant stop it!
     }
     if (fTimedObjectsDrawDistance || fNeonsDrawDistance)
     {
