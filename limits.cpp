@@ -40,6 +40,15 @@ DECL_HOOKv(InitPools)
     (*pPtrNodeDoubleLinkPool) = new CPool<CPtrNodeDoubleLink>(24000, "DoubleNodeLinksAreCool");
 }
 
+CLinkList<CEntity*> *rwObjectInstances;
+DECL_HOOKv(InitStreaming2)
+{
+    InitStreaming2();
+
+    rwObjectInstances->Shutdown();
+    rwObjectInstances->Init(8000);
+}
+
 void Init_MiniLA()
 {
   #ifdef AML32
@@ -97,6 +106,14 @@ void Init_MiniLA()
         SET_TO(pPtrNodeSingleLinkPool, aml->GetSym(hGTASA, "_ZN6CPools25ms_pPtrNodeSingleLinkPoolE"));
         SET_TO(pPtrNodeDoubleLinkPool, aml->GetSym(hGTASA, "_ZN6CPools25ms_pPtrNodeDoubleLinkPoolE"));
         HOOKPLT(InitPools, pGTASA + 0x672468);
+    }
+
+    // RwObject instances
+    if(*(uint32_t*)(pGTASA + 0x46BE20) == 0x6050F244 && // If FLA didnt touch it
+       *(uintptr_t*)(pGTASA + 0x6700D0) == (pGTASA + 0x46BA94 + 0x1)) 
+    {
+        SET_TO(rwObjectInstances, aml->GetSym(hGTASA, "_ZN10CStreaming20ms_rwObjectInstancesE"));
+        HOOKPLT(InitStreaming2, pGTASA + 0x6700D0);
     }
   #else
     // EntityIPL limit
@@ -168,6 +185,13 @@ void Init_MiniLA()
         SET_TO(pPtrNodeSingleLinkPool, aml->GetSym(hGTASA, "_ZN6CPools25ms_pPtrNodeSingleLinkPoolE"));
         SET_TO(pPtrNodeDoubleLinkPool, aml->GetSym(hGTASA, "_ZN6CPools25ms_pPtrNodeDoubleLinkPoolE"));
         HOOKPLT(InitPools, pGTASA + 0x843F18);
+    }
+
+    // RwObject instances
+    if(*(uint32_t*)(pGTASA + 0x551E80) == 0x9400151E)
+    {
+        SET_TO(rwObjectInstances, aml->GetSym(hGTASA, "_ZN10CStreaming20ms_rwObjectInstancesE"));
+        HOOKBL(InitStreaming2, pGTASA + 0x551E80);
     }
   #endif
 }
