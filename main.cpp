@@ -663,11 +663,13 @@ DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
 }
 DECL_HOOKv(RegisterCorona_FarClip, uintptr_t id, CEntity *entity, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha, CVector *pos, float radius, float farClip, void *texture, char flare, char enableReflection, char checkObstacles, int notUsed, float angle, char longDistance, float nearClip, char fadeState, float fadeSpeed, char onlyFromBelow, char reflectionDelay)
 {
-    //                                                              \/\/\/\/
-    RegisterCorona_FarClip(id, entity, r, g, b, alpha, pos, radius, 3000.0f, texture, flare, enableReflection, checkObstacles, notUsed, angle, longDistance, nearClip, fadeState, fadeSpeed, onlyFromBelow, reflectionDelay);
+    //                                                              \/\/\/
+    RegisterCorona_FarClip(id, entity, r, g, b, alpha, pos, radius, 500.0f, texture, flare, enableReflection, checkObstacles, notUsed, angle, longDistance, nearClip, fadeState, fadeSpeed, onlyFromBelow, reflectionDelay);
 }
 DECL_HOOKv(GameInit2_CranesInit)
 {
+    GameInit2_CranesInit();
+
     // CLodLights::Init
     if (LODLightsCoronas.size() != numCoronas)
     {
@@ -1245,9 +1247,9 @@ extern "C" void OnAllModsLoaded()
     if (bLoadAllBinaryIPLs)
     {
       #ifdef AML32
-        HOOKBLX(GenericLoad_IplStoreLoad, pGTASA + 0x482E18 + 0x1);
+        //HOOKBLX(GenericLoad_IplStoreLoad, pGTASA + 0x482E18 + 0x1);
       #else
-        HOOKBL(GenericLoad_IplStoreLoad, pGTASA + 0x574CE8);
+        //HOOKBL(GenericLoad_IplStoreLoad, pGTASA + 0x574CE8);
       #endif
     }
     if (bPreloadLODs)
@@ -1292,6 +1294,6 @@ extern "C" void OnAllModsLoaded()
   #else
     aml->Write32(pGTASA + 0x4D8664, 0x1E204120);
   #endif
-
+  
     Init_MiniLA();
 }

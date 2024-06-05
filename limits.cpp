@@ -34,25 +34,25 @@ DECL_HOOKv(InitPools)
     //if(*(uint32_t*)(pGTASA + 0x0) == 0x0)
     {
         (*pBuildingPool)->Flush(); delete *pBuildingPool;
-        (*pBuildingPool) = new CPool<CBuilding>(32000, "BuildingsAreCool");
+        (*pBuildingPool) = new CPool<CBuilding>(64000, "BuildingsAreCool");
     }
 
     //if(*(uint32_t*)(pGTASA + 0x0) == 0x0)
     {
         (*pDummyPool)->Flush(); delete *pDummyPool;
-        (*pDummyPool) = new CPool<CDummy>(24000, "DummiesAreCool");
+        (*pDummyPool) = new CPool<CDummy>(48000, "DummiesAreCool");
     }
 
     if(*(uint32_t*)(pGTASA + 0x40C8C0) == 0x70C0F242)
     {
         (*pPtrNodeSingleLinkPool)->Flush(); delete *pPtrNodeSingleLinkPool;
-        (*pPtrNodeSingleLinkPool) = new CPool<CPtrNode>(240000, "SingleNodeLinksAreCool");
+        (*pPtrNodeSingleLinkPool) = new CPool<CPtrNode>(320000, "SingleNodeLinksAreCool");
     }
 
     if(*(uint16_t*)(pGTASA + 0x40C92E) == 0xF641)
     {
         (*pPtrNodeDoubleLinkPool)->Flush(); delete *pPtrNodeDoubleLinkPool;
-        (*pPtrNodeDoubleLinkPool) = new CPool<CPtrNodeDoubleLink>(24000, "DoubleNodeLinksAreCool");
+        (*pPtrNodeDoubleLinkPool) = new CPool<CPtrNodeDoubleLink>(32000, "DoubleNodeLinksAreCool");
     }
 }
 
@@ -62,7 +62,7 @@ DECL_HOOKv(InitStreaming2)
     InitStreaming2();
 
     rwObjectInstances->Shutdown();
-    rwObjectInstances->Init(8000);
+    rwObjectInstances->Init(12000);
 }
 
 void Init_MiniLA()
@@ -73,7 +73,7 @@ void Init_MiniLA()
     {
         static void** entityIplPool; // default is 40
 
-        int entitiesIpl = 128;
+        int entitiesIpl = 1024;
         entityIplPool = new void*[entitiesIpl] {0};
 
         // IplEntityIndexArrays / ppEntityIndexArray (v2.10, original name)
@@ -89,7 +89,7 @@ void Init_MiniLA()
     {
         static void** entityPerIplPool; // default is 4096
 
-        int entitiesPerIpl = 16384;
+        int entitiesPerIpl = 32768;
         entityPerIplPool = new void*[entitiesPerIpl] {0};
         
         // gCurrIplInstances / gpLoadedBuildings (v2.10, original name)
@@ -161,7 +161,7 @@ void Init_MiniLA()
     {
         static void** entityIplPool; // default is 40
 
-        int entitiesIpl = 128;
+        int entitiesIpl = 1024;
         entityIplPool = new void*[entitiesIpl] {0};
 
         aml->WriteAddr(pGTASA + 0x710B38, (uintptr_t)entityIplPool); // saving a limit pointer!
@@ -188,7 +188,7 @@ void Init_MiniLA()
     {
         static void** entityPerIplPool; // default is 4096
 
-        int entitiesPerIpl = 16384;
+        int entitiesPerIpl = 32768;
         entityPerIplPool = new void*[entitiesPerIpl] {0};
 
         aml->WriteAddr(pGTASA + 0x712EB8, (uintptr_t)entityPerIplPool); // saving a limit pointer!
@@ -233,6 +233,19 @@ void Init_MiniLA()
         SET_TO(rwObjectInstances, aml->GetSym(hGTASA, "_ZN10CStreaming20ms_rwObjectInstancesE"));
         HOOKBL(InitStreaming2, pGTASA + 0x551E80);
     }
+
+    // Visible entity ptrs
+    /*if(*(uintptr_t*)(pGTASA + 0x84D210) == (pGTASA + 0xBCF900))
+    {
+        static void** visiblesPool; // default is 1024
+
+        int visibles = 12000;
+        visiblesPool = new void*[visibles] {0};
+
+        aml->WriteAddr(pGTASA + 0x84D210, (uintptr_t)visiblesPool);
+
+
+    }*/
 
     // Coronas Limit
     if(*(uintptr_t*)(pGTASA + 0x84B8D0) == (pGTASA + 0xCC6A80))
