@@ -5,8 +5,10 @@
 #include <mod/amlmod.h>
 #include <mod/logger.h>
 #ifdef AML32
+    #include <AArchASMHelper/Thumbv7_ASMHelper.h>
     #include "GTASA_STRUCTS.h"
 #else
+    #include <AArchASMHelper/ARMv8_ASMHelper.h>
     #include "GTASA_STRUCTS_210.h"
 #endif
 
@@ -29,15 +31,29 @@ DECL_HOOKv(InitPools)
 
     // Doing a dirty patch. Yeah, im lazy.
     // And we dont need to patch ALL pools.
-    (*pBuildingPool)->Flush(); delete *pBuildingPool;
-    (*pDummyPool)->Flush(); delete *pDummyPool;
-    (*pPtrNodeSingleLinkPool)->Flush(); delete *pPtrNodeSingleLinkPool;
-    (*pPtrNodeDoubleLinkPool)->Flush(); delete *pPtrNodeDoubleLinkPool;
+    //if(*(uint32_t*)(pGTASA + 0x0) == 0x0)
+    {
+        (*pBuildingPool)->Flush(); delete *pBuildingPool;
+        (*pBuildingPool) = new CPool<CBuilding>(32000, "BuildingsAreCool");
+    }
 
-    (*pBuildingPool) = new CPool<CBuilding>(32000, "BuildingsAreCool");
-    (*pDummyPool) = new CPool<CDummy>(24000, "DummiesAreCool");
-    (*pPtrNodeSingleLinkPool) = new CPool<CPtrNode>(240000, "SingleNodeLinksAreCool");
-    (*pPtrNodeDoubleLinkPool) = new CPool<CPtrNodeDoubleLink>(24000, "DoubleNodeLinksAreCool");
+    //if(*(uint32_t*)(pGTASA + 0x0) == 0x0)
+    {
+        (*pDummyPool)->Flush(); delete *pDummyPool;
+        (*pDummyPool) = new CPool<CDummy>(24000, "DummiesAreCool");
+    }
+
+    if(*(uint32_t*)(pGTASA + 0x40C8C0) == 0x70C0F242)
+    {
+        (*pPtrNodeSingleLinkPool)->Flush(); delete *pPtrNodeSingleLinkPool;
+        (*pPtrNodeSingleLinkPool) = new CPool<CPtrNode>(240000, "SingleNodeLinksAreCool");
+    }
+
+    if(*(uint16_t*)(pGTASA + 0x40C92E) == 0xF641)
+    {
+        (*pPtrNodeDoubleLinkPool)->Flush(); delete *pPtrNodeDoubleLinkPool;
+        (*pPtrNodeDoubleLinkPool) = new CPool<CPtrNodeDoubleLink>(24000, "DoubleNodeLinksAreCool");
+    }
 }
 
 CLinkList<CEntity*> *rwObjectInstances;
@@ -92,7 +108,8 @@ void Init_MiniLA()
     }
 
     // Static Matrices
-    if(*(uintptr_t*)(pGTASA + 0x675554) == (pGTASA + 0x408AD0 + 0x1))
+    if(*(uintptr_t*)(pGTASA + 0x675554) == (pGTASA + 0x408AD0 + 0x1) &&
+       *(uint32_t*)(pGTASA + 0x471D1A) == 0xEED0F52D)
     {
         SET_TO(InitMatrixLinkList, aml->GetSym(hGTASA, "_ZN15CMatrixLinkList4InitEi"));
         HOOKPLT(InitStaticMatrices, pGTASA + 0x675554);
@@ -114,6 +131,29 @@ void Init_MiniLA()
     {
         SET_TO(rwObjectInstances, aml->GetSym(hGTASA, "_ZN10CStreaming20ms_rwObjectInstancesE"));
         HOOKPLT(InitStreaming2, pGTASA + 0x6700D0);
+    }
+
+    // Coronas Limit
+    if(*(uintptr_t*)(pGTASA + 0x676C44) == (pGTASA + 0xA25B44))
+    {
+        static void* coronasPool; // default is 64
+
+        int coronas = 192; // max value __with these patches__ is 255
+                           // anyways it should be 192... Because of "Write" patches.
+        coronasPool = new char[coronas * sizeof(CRegisteredCorona)] {0};
+
+        aml->WriteAddr(pGTASA + 0x676C44, (uintptr_t)coronasPool);
+
+        aml->Write(pGTASA + 0x5A2314, "\xB4\xF5\x34\x5F", 4);
+        aml->Write(pGTASA + 0x5A2B06, "\xBA\xF1\xC0\x0F", 4);
+        aml->Write(pGTASA + 0x5A2F76, "\xB0\xF5\x34\x5F", 4);
+        aml->Write(pGTASA + 0x5A2F24, "\xB8\xF5\x34\x5F", 4);
+        aml->Write(pGTASA + 0x5A382A, "\xB2\xF5\x34\x5F", 4);
+        aml->Write8(pGTASA + 0x5A3B5A, (uint8_t)coronas);
+        aml->Write8(pGTASA + 0x5A3B86, (uint8_t)coronas);
+        aml->Write(pGTASA + 0x5A3D94, "\xBC\xF1\xC0\x0F", 4);
+        aml->Write8(pGTASA + 0x5A4C9C, (uint8_t)coronas);
+        aml->Write8(pGTASA + 0x5A4CA2, (uint8_t)coronas);
     }
   #else
     // EntityIPL limit
@@ -192,6 +232,28 @@ void Init_MiniLA()
     {
         SET_TO(rwObjectInstances, aml->GetSym(hGTASA, "_ZN10CStreaming20ms_rwObjectInstancesE"));
         HOOKBL(InitStreaming2, pGTASA + 0x551E80);
+    }
+
+    // Coronas Limit
+    if(*(uintptr_t*)(pGTASA + 0x84B8D0) == (pGTASA + 0xCC6A80))
+    {
+        static void* coronasPool; // default is 64
+
+        int coronas = 256; // max value __with these patches__ is 819 (because of MOVN)
+        coronasPool = new char[coronas * sizeof(CRegisteredCorona)] {0};
+
+        aml->WriteAddr(pGTASA + 0x84B8D0, (uintptr_t)coronasPool);
+
+        aml->Write32(pGTASA + 0x6C5CA4, ARMv8::MOVBits::Create (coronas, 20, false));
+        aml->Write32(pGTASA + 0x6C6440, ARMv8::CMPBits::Create (coronas, 23, true ));
+        aml->Write32(pGTASA + 0x6C67DC, ARMv8::CMPBits::Create (coronas, 22, true ));
+        aml->Write32(pGTASA + 0x6C6834, ARMv8::MOVBits::Create (coronas,  8, false));
+        aml->Write32(pGTASA + 0x6C7084, ARMv8::MOVNBits::Create(coronas * sizeof(CRegisteredCorona), 8, true ));
+        aml->Write32(pGTASA + 0x6C7380, ARMv8::CMPBits::Create (coronas, 14, false));
+        aml->Write32(pGTASA + 0x6C73B4, ARMv8::CMPBits::Create (coronas, 14, false));
+        aml->Write32(pGTASA + 0x6C75B4, ARMv8::CMPBits::Create (coronas, 12, false));
+        aml->Write32(pGTASA + 0x6C822C, ARMv8::CMPBits::Create (coronas,  8, true ));
+        aml->Write32(pGTASA + 0x6C823C, ARMv8::CMPBits::Create (coronas,  9, false));
     }
   #endif
 }
