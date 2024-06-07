@@ -65,6 +65,29 @@ DECL_HOOKv(InitStreaming2)
     rwObjectInstances->Init(12000);
 }
 
+CLinkList<CVisibilityPlugins::AlphaObjectInfo> *m_alphaList;
+CLinkList<CVisibilityPlugins::AlphaObjectInfo> *m_alphaEntityList;
+CLinkList<CVisibilityPlugins::AlphaObjectInfo> *m_alphaReallyDrawLastList;
+DECL_HOOKv(InitVisibilityPlugins)
+{
+    InitVisibilityPlugins();
+
+    m_alphaList->Shutdown();
+    m_alphaList->Init(200); // 20
+    m_alphaList->usedListHead.data.dist = 0.0f;
+    m_alphaList->usedListTail.data.dist = 100000000.0f;
+
+    m_alphaEntityList->Shutdown();
+    m_alphaEntityList->Init(2000); // 200
+    m_alphaEntityList->usedListHead.data.dist = 0.0f;
+    m_alphaEntityList->usedListTail.data.dist = 100000000.0f;
+
+    m_alphaReallyDrawLastList->Shutdown();
+    m_alphaReallyDrawLastList->Init(500); // 50
+    m_alphaReallyDrawLastList->usedListHead.data.dist = 0.0f;
+    m_alphaReallyDrawLastList->usedListTail.data.dist = 100000000.0f;
+}
+
 void Init_MiniLA()
 {
   #ifdef AML32
@@ -187,6 +210,31 @@ void Init_MiniLA()
         aml->Write(pGTASA + 0x5A3D94, "\xBC\xF1\xC0\x0F", 4);
         aml->Write8(pGTASA + 0x5A4C9C, (uint8_t)coronas);
         aml->Write8(pGTASA + 0x5A4CA2, (uint8_t)coronas);
+    }
+
+    // Water blocks
+    if(*(uintptr_t*)(pGTASA + 0x6777C4) == (pGTASA + 0xA1BFD0))
+    {
+        static void* blocksX; // default is 70
+        static void* blocksY; // default is 70
+
+        int blocks = 256;
+        blocksX = new uint16_t[blocks] {0};
+        blocksY = new uint16_t[blocks] {0};
+
+        aml->WriteAddr(pGTASA + 0x6777C4, (uintptr_t)blocksX);
+        aml->WriteAddr(pGTASA + 0x678A84, (uintptr_t)blocksY);
+
+        aml->Write8(pGTASA + 0x59868C, (uint8_t)blocks-1);
+    }
+
+    // Visibility Plugins: Alpha lists
+    if(*(uintptr_t*)(pGTASA + 0x673D8C) == (pGTASA + 0x5D441C + 0x1))
+    {
+        SET_TO(m_alphaList, aml->GetSym(hGTASA, "_ZN18CVisibilityPlugins11m_alphaListE"));
+        SET_TO(m_alphaEntityList, aml->GetSym(hGTASA, "_ZN18CVisibilityPlugins17m_alphaEntityListE"));
+        SET_TO(m_alphaReallyDrawLastList, aml->GetSym(hGTASA, "_ZN18CVisibilityPlugins25m_alphaReallyDrawLastListE"));
+        HOOKPLT(InitVisibilityPlugins, pGTASA + 0x673D8C);
     }
   #else
     // EntityIPL limit
@@ -320,6 +368,31 @@ void Init_MiniLA()
         aml->Write32(pGTASA + 0x6C75B4, ARMv8::CMPBits::Create (coronas, 12, false));
         aml->Write32(pGTASA + 0x6C822C, ARMv8::CMPBits::Create (coronas,  8, true ));
         aml->Write32(pGTASA + 0x6C823C, ARMv8::CMPBits::Create (coronas,  9, false));
+    }
+
+    // Water blocks
+    if(*(uintptr_t*)(pGTASA + 0x84CFB0) == (pGTASA + 0xCBCBDC))
+    {
+        static void* blocksX; // default is 70
+        static void* blocksY; // default is 70
+
+        int blocks = 512;
+        blocksX = new uint16_t[blocks] {0};
+        blocksY = new uint16_t[blocks] {0};
+
+        aml->WriteAddr(pGTASA + 0x84CFB0, (uintptr_t)blocksX);
+        aml->WriteAddr(pGTASA + 0x84F530, (uintptr_t)blocksY);
+
+        aml->Write32(pGTASA + 0x6BCECC, ARMv8::CMPBits::Create(blocks-1, 9, false));
+    }
+
+    // Visibility Plugins: Alpha lists
+    if(*(uintptr_t*)(pGTASA + 0x846808) == (pGTASA + 0x6F954C))
+    {
+        SET_TO(m_alphaList, aml->GetSym(hGTASA, "_ZN18CVisibilityPlugins11m_alphaListE"));
+        SET_TO(m_alphaEntityList, aml->GetSym(hGTASA, "_ZN18CVisibilityPlugins17m_alphaEntityListE"));
+        SET_TO(m_alphaReallyDrawLastList, aml->GetSym(hGTASA, "_ZN18CVisibilityPlugins25m_alphaReallyDrawLastListE"));
+        HOOKPLT(InitVisibilityPlugins, pGTASA + 0x846808);
     }
   #endif
 }
