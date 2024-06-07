@@ -133,6 +133,39 @@ void Init_MiniLA()
         HOOKPLT(InitStreaming2, pGTASA + 0x6700D0);
     }
 
+    // Visible entity ptrs
+    if(*(uintptr_t*)(pGTASA + 0x6778F4) == (pGTASA + 0x960B80))
+    {
+        static void** visiblesPool; // default is 1024
+
+        int visibles = 12000;
+        visiblesPool = new void*[visibles] {0};
+
+        aml->WriteAddr(pGTASA + 0x6778F4, (uintptr_t)visiblesPool);
+    }
+
+    // InVisible entity ptrs
+    if(*(uintptr_t*)(pGTASA + 0x678B88) == (pGTASA + 0x962C00))
+    {
+        static void** invisiblesPool; // default is 150
+
+        int invisibles = 2000;
+        invisiblesPool = new void*[invisibles] {0};
+
+        aml->WriteAddr(pGTASA + 0x678B88, (uintptr_t)invisiblesPool);
+    }
+
+    // Visible lod ptrs
+    if(*(uintptr_t*)(pGTASA + 0x676484) == (pGTASA + 0x961B40))
+    {
+        static void** lodsPool; // default is 1024
+
+        int lods = 12000;
+        lodsPool = new void*[lods] {0};
+
+        aml->WriteAddr(pGTASA + 0x676484, (uintptr_t)lodsPool);
+    }
+
     // Coronas Limit
     if(*(uintptr_t*)(pGTASA + 0x676C44) == (pGTASA + 0xA25B44))
     {
@@ -235,7 +268,7 @@ void Init_MiniLA()
     }
 
     // Visible entity ptrs
-    /*if(*(uintptr_t*)(pGTASA + 0x84D210) == (pGTASA + 0xBCF900))
+    if(*(uintptr_t*)(pGTASA + 0x84D210) == (pGTASA + 0xBCF900))
     {
         static void** visiblesPool; // default is 1024
 
@@ -243,9 +276,29 @@ void Init_MiniLA()
         visiblesPool = new void*[visibles] {0};
 
         aml->WriteAddr(pGTASA + 0x84D210, (uintptr_t)visiblesPool);
+    }
 
+    // InVisible entity ptrs
+    if(*(uintptr_t*)(pGTASA + 0x84F738) == (pGTASA + 0xBD3940))
+    {
+        static void** invisiblesPool; // default is 150
 
-    }*/
+        int invisibles = 2000;
+        invisiblesPool = new void*[invisibles] {0};
+
+        aml->WriteAddr(pGTASA + 0x84F738, (uintptr_t)invisiblesPool);
+    }
+
+    // Visible lod ptrs
+    if(*(uintptr_t*)(pGTASA + 0x84A958) == (pGTASA + 0xBD1840))
+    {
+        static void** lodsPool; // default is 1024
+
+        int lods = 12000;
+        lodsPool = new void*[lods] {0};
+
+        aml->WriteAddr(pGTASA + 0x84A958, (uintptr_t)lodsPool);
+    }
 
     // Coronas Limit
     if(*(uintptr_t*)(pGTASA + 0x84B8D0) == (pGTASA + 0xCC6A80))
