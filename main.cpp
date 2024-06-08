@@ -16,6 +16,13 @@
 #endif
 #include <searchlights.h>
 
+// Init
+MYMOD(net.thirteenag.rusjj.gtasa.2dfx, Project 2DFX, 1.2, ThirteenAG & RusJJ)
+NEEDGAME(com.rockstargames.gtasa)
+BEGIN_DEPLIST()
+    ADD_DEPENDENCY_VER(net.rusjj.aml, 1.2.2)
+END_DEPLIST()
+
 // Structs
 enum BlinkTypes
 {
@@ -34,8 +41,6 @@ public:
     CVector     Coordinates;            // Where is it exactly.
     float       Size;                   // How big is this fellow
     float       Range;                  // How far away is this guy still visible
-    //uint8_t     Red, Green, Blue;       // Rendering colour.
-    //uint8_t     Intensity;              // 255 = full
     CRGBA       Color;                  // Rendering colour.
     uintptr_t   Identifier;             // Should be unique for each corona. Address or something (0 = empty)
     
@@ -81,13 +86,6 @@ public:
     inline CLODLightsLinkedListNode*    First()
         { return pNext == this ? NULL : pNext; }
 };
-
-// Init
-MYMOD(net.thirteenag.rusjj.gtasa.2dfx, Project 2DFX, 1.1, ThirteenAG & RusJJ)
-NEEDGAME(com.rockstargames.gtasa)
-BEGIN_DEPLIST()
-    ADD_DEPENDENCY_VER(net.rusjj.aml, 1.2.2)
-END_DEPLIST()
 
 Config*             cfg;
 uintptr_t           pGTASA;
@@ -676,14 +674,19 @@ DECL_HOOKv(LoadLevel_LoadingScreen, const char *a1, const char *a2, const char *
 DECL_HOOKv(RenderEffects_MovingThings)
 {
     RenderEffects_MovingThings();
-    if(bRenderLodLights)
+
+    // Do not use our CPU power when we are not rendering.
+    if(*nActiveInterior == 0)
     {
-        RenderBufferedLODLights();
-    }
-    if(bRenderSearchlightEffects)
-    {
-        // FPS killer feature. We're not ready for this on our smartphones...
-        // CSearchLights::RenderSearchLightsSA();
+        if(bRenderLodLights)
+        {
+            RenderBufferedLODLights();
+        }
+        if(bRenderSearchlightEffects)
+        {
+            // FPS killer feature. We're not ready for this on our smartphones...
+            // CSearchLights::RenderSearchLightsSA();
+        }
     }
 }
 DECL_HOOK(CEntity*, LoadObjectInstance, void* a1, char const* a2)
