@@ -5,8 +5,9 @@
 #include <chrono>
 
 //#define SCREEN_OPTIMISATION // it eats CPU on weaker phones. No.
+//#define CORONALODS_FOG_STRETCH // Looks ugh
 #define CALCSCREENCOORS_SPEEDUP
-#define CORONALODS_DRAWDIST_START 250.0f
+#define CORONALODS_DRAWDIST_START 200.0f
 
 #ifdef AML32
     #include "GTASA_STRUCTS.h"
@@ -207,17 +208,17 @@ static float CalcScreenCoors_Width;
 static float CalcScreenCoors_Height;
 static float CalcScreenCoors_50FOV;
 static float CalcScreenCoors_70FOV;
-inline bool CalcScreenCoorsFast(CVector* WorldPos, CVector* ScreenPos, float* ScaleX, float* ScaleY) // +1 FPS. Better than nothing...
+static CVector CalcScreenCoors_ScreenPos;
+inline bool CalcScreenCoorsFast(CVector* WorldPos, float* ScaleX, float* ScaleY) // +1 FPS. Better than nothing...
 {
-    CVector screenPos = MatrixVectorMult(&TheCamera->m_viewMatrix, WorldPos); //TheCamera->m_viewMatrix * *WorldPos; // my function is brokey *sad sad* ;-;
-    if(screenPos.z <= *ms_fNearClipZ + 1.0f || screenPos.z >= *ms_fFarClipZ) return false;
+    CalcScreenCoors_ScreenPos = MatrixVectorMult(&TheCamera->m_viewMatrix, WorldPos); //TheCamera->m_viewMatrix * *WorldPos; // my function is brokey *sad sad* ;-;
+    if(CalcScreenCoors_ScreenPos.z <= *ms_fNearClipZ + 1.0f || CalcScreenCoors_ScreenPos.z >= *ms_fFarClipZ) return false;
 
-    float invDepth = 1.0f / screenPos.z;
+    float invDepth = 1.0f / CalcScreenCoors_ScreenPos.z;
     float invScreenWidth = invDepth * CalcScreenCoors_Width, invScreenHeight = invDepth * CalcScreenCoors_Height;
 
-    screenPos.x *= invScreenWidth;
-    screenPos.y *= invScreenHeight;
-    *ScreenPos = screenPos;
+    CalcScreenCoors_ScreenPos.x *= invScreenWidth;
+    CalcScreenCoors_ScreenPos.y *= invScreenHeight;
 
     *ScaleX = invScreenWidth * CalcScreenCoors_50FOV;
     *ScaleY = invScreenHeight * CalcScreenCoors_70FOV;
@@ -236,10 +237,13 @@ void RenderBufferedLODLights()
     CalcScreenCoors_Height = RsGlobal->maximumHeight;
     CalcScreenCoors_50FOV = (50.0f / *ms_fFOV) * (1.4286f * CalcScreenCoors_Height / CalcScreenCoors_Width);
     CalcScreenCoors_70FOV = (70.0f / *ms_fFOV);
+
+    #define vecTransformedCoords CalcScreenCoors_ScreenPos
+  #else
+    CVector vecTransformedCoords;
   #endif
 
     RwRaster* pTargetRaster = (gpCustomCoronaTexture != NULL) ? gpCustomCoronaTexture->raster : gpCoronaTexture[1]->raster;
-    CVector vecTransformedCoords;
     float fComputedWidth, fComputedHeight;
 
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)false);
@@ -258,7 +262,7 @@ void RenderBufferedLODLights()
         if (corona.Identifier != 0 && corona.Color.a != 0)
         {
           #ifdef CALCSCREENCOORS_SPEEDUP
-            if(CalcScreenCoorsFast(&corona.Coordinates, &vecTransformedCoords, &fComputedWidth, &fComputedHeight) && vecTransformedCoords.z <= corona.Range)
+            if(CalcScreenCoorsFast(&corona.Coordinates, &fComputedWidth, &fComputedHeight) && vecTransformedCoords.z <= corona.Range)
           #else
             if(CalcScreenCoors(&corona.Coordinates, &vecTransformedCoords, &fComputedWidth, &fComputedHeight, true, true) && vecTransformedCoords.z <= corona.Range)
           #endif
@@ -274,7 +278,12 @@ void RenderBufferedLODLights()
                 float fColourFogMult = fminf(40.0f, vecTransformedCoords.z) * weatherFogScaled + 1.0f;
                 float fColourFogMultInv = 1.0f / fColourFogMult;
 
-                RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight * fColourFogMult, corona.Color.r * fColourFogMultInv, corona.Color.g * fColourFogMultInv, corona.Color.b * fColourFogMultInv, nFadeIntensity, fInvFarClip, 0.0f, 255);
+              #ifdef CORONALODS_FOG_STRETCH
+                // horizontal stretching instead of VERTICAL (BRUH!!!)
+                fComputedWidth *= fColourFogMult;
+              #endif
+
+                RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight, corona.Color.r * fColourFogMultInv, corona.Color.g * fColourFogMultInv, corona.Color.b * fColourFogMultInv, nFadeIntensity, fInvFarClip, 0.0f, 255);
             }
             else
             {
@@ -283,6 +292,10 @@ void RenderBufferedLODLights()
         }
     }
     FlushSpriteBuffer();
+
+  #ifdef CALCSCREENCOORS_SPEEDUP
+    #undef vecTransformedCoords
+  #endif
 }
 void LoadDatFile()
 {
