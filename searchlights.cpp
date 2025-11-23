@@ -426,7 +426,7 @@ void CSearchLights::RenderSearchLightsSA()
 
                 if ((fDistSqr > 50.0f*50.0f) && (fDistSqr < 300.0f*300.0f))
                 {
-                    float fVisibility = fSearchlightEffectVisibilityFactor * ((0.0233333f)*sqrt(fDistSqr) - 1.16667f);
+                    float fVisibility = fSearchlightEffectVisibilityFactor * ((0.0233333f)*sqrtf(fDistSqr) - 1.16667f);
 
                     EndPoint.z = FindGroundZFor3DCoord(it->vecPos.x, it->vecPos.y, it->vecPos.z, NULL, NULL);
 
@@ -478,7 +478,7 @@ void CSearchLights::RegisterLamppost(CEntity* pObj)
     for (auto it = pFileContent->lower_bound(PackKey(nModelID, 0)); it != itEnd; ++it)
     {
         auto& target = it->second;
-        CVector pos = MatrixVectorMult(dummyMatrix, &target.vecPos);
+        CVector pos = *dummyMatrix * target.vecPos;
         if(pos.z >= -15.0f && pos.z <= 1030.0f) // moved this from 'RegisterLODLights'
         {
             m_pLampposts->push_back(CLamppostInfo(pos, target.colour, target.fCustomSizeMult, target.nCoronaShowMode, target.nNoDistance, target.nDrawSearchlight, objTransform.m_fHeading));

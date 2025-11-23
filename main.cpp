@@ -17,7 +17,7 @@
 #include <searchlights.h>
 
 // Init
-MYMOD(net.thirteenag.rusjj.gtasa.2dfx, Project 2DFX, 1.2, ThirteenAG & RusJJ)
+MYMOD(net.thirteenag.rusjj.gtasa.2dfx, Project 2DFX, 1.3, ThirteenAG & RusJJ)
 NEEDGAME(com.rockstargames.gtasa)
 BEGIN_DEPLIST()
     ADD_DEPENDENCY_VER(net.rusjj.aml, 1.2.2)
@@ -26,7 +26,7 @@ END_DEPLIST()
 // Structs
 enum BlinkTypes
 {
-    DEFAULT_BLINK,
+    DEFAULT_BLINK = 0,
     RANDOM_FLASHING,
     T_1S_ON_1S_OFF,
     T_2S_ON_2S_OFF,
@@ -206,14 +206,15 @@ static float CalcScreenCoors_Width;
 static float CalcScreenCoors_Height;
 static float CalcScreenCoors_50FOV;
 static float CalcScreenCoors_70FOV;
+static float CalcScreenCoors_NearClipZP1;
 static CVector CalcScreenCoors_ScreenPos;
 inline bool CalcScreenCoorsFast(CVector* WorldPos, float* ScaleX, float* ScaleY) // +1 FPS. Better than nothing...
 {
-    CalcScreenCoors_ScreenPos = MatrixVectorMult(&TheCamera->m_viewMatrix, WorldPos); //TheCamera->m_viewMatrix * *WorldPos; // my function is brokey *sad sad* ;-;
-    if(CalcScreenCoors_ScreenPos.z <= *ms_fNearClipZ + 1.0f || CalcScreenCoors_ScreenPos.z >= *ms_fFarClipZ) return false;
+    CalcScreenCoors_ScreenPos = TheCamera->m_viewMatrix * *WorldPos;
+    if(CalcScreenCoors_ScreenPos.z <= CalcScreenCoors_NearClipZP1 || CalcScreenCoors_ScreenPos.z >= *ms_fFarClipZ) return false;
 
-    float invDepth = 1.0f / CalcScreenCoors_ScreenPos.z;
-    float invScreenWidth = invDepth * CalcScreenCoors_Width, invScreenHeight = invDepth * CalcScreenCoors_Height;
+    const float invDepth = 1.0f / CalcScreenCoors_ScreenPos.z;
+    const float invScreenWidth = invDepth * CalcScreenCoors_Width, invScreenHeight = invDepth * CalcScreenCoors_Height;
 
     CalcScreenCoors_ScreenPos.x *= invScreenWidth;
     CalcScreenCoors_ScreenPos.y *= invScreenHeight;
@@ -226,8 +227,8 @@ inline bool CalcScreenCoorsFast(CVector* WorldPos, float* ScaleX, float* ScaleY)
 void RenderBufferedLODLights()
 {
   #ifdef SCREEN_OPTIMISATION
-    int nWidth = RsGlobal->maximumWidth;
-    int nHeight = RsGlobal->maximumHeight;
+    const int nWidth = RsGlobal->maximumWidth;
+    const int nHeight = RsGlobal->maximumHeight;
   #endif
 
   #ifdef CALCSCREENCOORS_SPEEDUP
@@ -235,6 +236,7 @@ void RenderBufferedLODLights()
     CalcScreenCoors_Height = RsGlobal->maximumHeight;
     CalcScreenCoors_50FOV = (50.0f / *ms_fFOV) * (1.4286f * CalcScreenCoors_Height / CalcScreenCoors_Width);
     CalcScreenCoors_70FOV = (70.0f / *ms_fFOV);
+    CalcScreenCoors_NearClipZP1 = *ms_fNearClipZ + 1.0f;
 
     #define vecTransformedCoords CalcScreenCoors_ScreenPos
   #else
@@ -251,9 +253,9 @@ void RenderBufferedLODLights()
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)pTargetRaster);
 
-    float weatherFogScaled = *flWeatherFoggyness * 0.025f;
+    const float weatherFogScaled = *flWeatherFoggyness * 0.025f;
 
-    size_t size = LODLightsCoronas.size();
+    const size_t size = LODLightsCoronas.size();
     for (size_t i = 0; i < size; ++i)
     {
         CLODRegisteredCorona& corona = LODLightsCoronas[i];
@@ -281,7 +283,10 @@ void RenderBufferedLODLights()
                 fComputedWidth *= fColourFogMult;
               #endif
 
-                RenderBufferedOneXLUSprite_Rotate_Aspect(vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight, corona.Color.r * fColourFogMultInv, corona.Color.g * fColourFogMultInv, corona.Color.b * fColourFogMultInv, nFadeIntensity, fInvFarClip, 0.0f, 255);
+                RenderBufferedOneXLUSprite_Rotate_Aspect(
+                    vecTransformedCoords.x, vecTransformedCoords.y, vecTransformedCoords.z, corona.Size * fComputedWidth, corona.Size * fComputedHeight,
+                    corona.Color.r * fColourFogMultInv, corona.Color.g * fColourFogMultInv, corona.Color.b * fColourFogMultInv, nFadeIntensity, fInvFarClip, 0.0f, 255
+                );
             }
             else
             {
@@ -291,7 +296,7 @@ void RenderBufferedLODLights()
     }
     FlushSpriteBuffer();
 
-  #ifdef CALCSCREENCOORS_SPEEDUP
+  #ifdef vecTransformedCoords
     #undef vecTransformedCoords
   #endif
 }
@@ -337,12 +342,14 @@ void LoadDatFile()
             }
         }
         bCatchLamppostsNow = true;
+        logger->Info("SALodLights.dat been processed...");
         CloseFile(fd);
     }
     else
     {
         bRenderLodLights = false;
         bRenderSearchlightEffects = false;
+        logger->Error("Failed to open SALodLights.dat!");
     }
 }
 void RegisterCustomCoronas()
@@ -359,7 +366,7 @@ void RegisterCustomCoronas()
         m_pLampposts->push_back(CLamppostInfo(target.vecPos, target.colour, target.fCustomSizeMult, target.nCoronaShowMode, target.nNoDistance, target.nDrawSearchlight, 0.0f));
     }
 }
-bool IsBlinkingNeeded(int BlinkType)
+inline bool IsBlinkingNeeded(int BlinkType)
 {
     signed int nOnDuration = 0;
     signed int nOffDuration = 0;
@@ -666,6 +673,11 @@ void SetMaxDrawDistanceForNormalObjects(float v)
 }
 
 // Hooks
+DECL_HOOKv(InitObjectData, const char* filename, bool reload)
+{
+    LoadDatFile();
+    InitObjectData(filename, reload);
+}
 DECL_HOOKv(LoadLevel_LoadingScreen, const char *a1, const char *a2, const char *a3)
 {
     LoadLevel_LoadingScreen(a1, a2, a3);
@@ -723,6 +735,18 @@ DECL_HOOKv(GameInit2_CranesInit)
             LODLightsLinkedList[i].SetEntry(&LODLightsCoronas[i]);
         }
     }
+}
+DECL_HOOKb(GameInit2_Post, const char* a1)
+{
+    if(GameInit2_Post(a1))
+    {
+        RegisterCustomCoronas();
+        bCatchLamppostsNow = false;
+        m_pLampposts->shrink_to_fit();
+        pFileContent->clear();
+        return true;
+    }
+    return false;
 }
 DECL_HOOKv(GameInit_LoadingScreen, const char *a1, const char *a2, const char *a3)
 {
@@ -1004,7 +1028,7 @@ __attribute__((optnone)) __attribute__((naked)) void LoadScene_Inject(void)
 #endif
 
 /// Main
-extern "C" void OnAllModsLoaded()
+ON_ALL_MODS_LOAD()
 {
     logger->SetTag("Project2DFX");
     pGTASA = aml->GetLib("libGTASA.so");
@@ -1113,16 +1137,21 @@ extern "C" void OnAllModsLoaded()
     SET_TO(MatrixVectorMult,        aml->GetSym(hGTASA, "_ZmlRK7CMatrixRK7CVector"));
 
     // Hooks
+    HOOK(InitObjectData,            aml->GetSym(hGTASA, "_ZN11CObjectData10InitialiseEPcb"));
   #ifdef AML32
-    HOOKBLX(LoadLevel_LoadingScreen,    pGTASA + 0x466AB2 + 0x1);
-    HOOKBLX(RenderEffects_MovingThings, pGTASA + 0x3F6380 + 0x1);
+    //HOOKBLX(LoadLevel_LoadingScreen,    pGTASA + 0x466AB2 + 0x1);
+    //HOOKBLX(RenderEffects_MovingThings, pGTASA + 0x3F6380 + 0x1);
+    HOOKPLT(RenderEffects_MovingThings, pGTASA + 0x673094);
     HOOKBLX(RegisterCorona_FarClip,     pGTASA + 0x5A44E8 + 0x1);
-    HOOKBLX(GameInit2_CranesInit,       pGTASA + 0x473022 + 0x1);
+    //HOOKBLX(GameInit2_CranesInit,       pGTASA + 0x473022 + 0x1);
+    HOOKPLT(GameInit2_CranesInit,       pGTASA + 0x66EF60);
   #else
-    HOOKBL(LoadLevel_LoadingScreen,     pGTASA + 0x551E20);
-    HOOKBL(RenderEffects_MovingThings,  pGTASA + 0x4D88FC);
+    //HOOKBL(LoadLevel_LoadingScreen,     pGTASA + 0x551E20);
+    //HOOKBL(RenderEffects_MovingThings,  pGTASA + 0x4D88FC);
+    HOOKPLT(RenderEffects_MovingThings,   pGTASA + 0x8452B0);
     HOOKBL(RegisterCorona_FarClip,      pGTASA + 0x6C8438);
-    HOOKBL(GameInit2_CranesInit,        pGTASA + 0x55F748);
+    //HOOKBL(GameInit2_CranesInit,        pGTASA + 0x55F748);
+    HOOKPLT(GameInit2_CranesInit,       pGTASA + 0x83E938);
   #endif
 
     // Patches
@@ -1140,21 +1169,24 @@ extern "C" void OnAllModsLoaded()
     if (bRenderLodLights)
     {
         // CLODLights::Inject();
+        HOOK(GameInit2_Post, aml->GetSym(hGTASA, "_ZN5CGame5Init2EPKc"));
       #ifdef AML32
-        HOOKBLX(GameInit_LoadingScreen, pGTASA + 0x3F3784 + 0x1);
+        //HOOKBLX(GameInit_LoadingScreen, pGTASA + 0x3F3784 + 0x1);
         HOOKPLT(LoadObjectInstance, pGTASA + 0x675E6C);
-        HOOKBLX(GameProcess_BridgesUpdate, pGTASA + 0x3F4266 + 0x1);
+        //HOOKBLX(GameProcess_BridgesUpdate, pGTASA + 0x3F4266 + 0x1);
+        HOOKPLT(GameProcess_BridgesUpdate, pGTASA + 0x66EADC);
       #else
-        HOOKBL(GameInit_LoadingScreen, pGTASA + 0x4D5ABC);
-        HOOKPLT(LoadObjectInstance, pGTASA + 0x849D58);
-        HOOKBL(LoadObjectInstance, pGTASA + 0x4D20D4);
-        HOOKBL(GameProcess_BridgesUpdate, pGTASA + 0x4D6638);
+        //HOOKBL(GameInit_LoadingScreen, pGTASA + 0x4D5ABC);
+        HOOK(LoadObjectInstance, aml->GetSym(hGTASA, "_ZN11CFileLoader18LoadObjectInstanceEP19CFileObjectInstancePKc"));
+        //HOOKBL(GameProcess_BridgesUpdate, pGTASA + 0x4D6638);
+        HOOKPLT(GameProcess_BridgesUpdate, pGTASA + 0x83E188);
       #endif
     }
     if (bEnableDrawDistanceChanger)
     {
       #ifdef AML32
-        HOOKBLX(Idle_DebugDisplayTextBuffer, pGTASA + 0x3F6C7C + 0x1);
+        //HOOKBLX(Idle_DebugDisplayTextBuffer, pGTASA + 0x3F6C7C + 0x1);
+        HOOKPLT(Idle_DebugDisplayTextBuffer, pGTASA + 0x674188);
 
         // "ms_fFarClipPlane = x" part
         aml->PlaceNOP(pGTASA + 0x40EEBE + 0x1, 1);
@@ -1167,7 +1199,8 @@ extern "C" void OnAllModsLoaded()
         HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F5E12 + 0x1); // NewTileRenderCB
         HOOKBLX(DrawDistance_SetCamFarClip, pGTASA + 0x3F5E36 + 0x1); // NewTileRenderCB
       #else
-        HOOKBL(Idle_DebugDisplayTextBuffer, pGTASA + 0x4D9248);
+        //HOOKBL(Idle_DebugDisplayTextBuffer, pGTASA + 0x4D9248);
+        HOOKPLT(Idle_DebugDisplayTextBuffer, pGTASA + 0x846E90);
 
         // "ms_fFarClipPlane = x" part
         aml->PlaceNOP(pGTASA + 0x4F4374, 1);
@@ -1252,12 +1285,16 @@ extern "C" void OnAllModsLoaded()
     if (fLODObjectsDrawDistance || fGenericObjectsDrawDistance || fAllNormalObjectsDrawDistance || fVegetationDrawDistance)
     {
       #ifdef AML32
-        HOOKBLX(LoadObject_AddDamageAtomicModel, pGTASA + 0x4694E4 + 0x1);
-        HOOKBLX(LoadObject_AddAtomicModel, pGTASA + 0x4694DE + 0x1);
+        //HOOKBLX(LoadObject_AddDamageAtomicModel, pGTASA + 0x4694E4 + 0x1);
+        HOOKPLT(LoadObject_AddDamageAtomicModel, pGTASA + 0x675B20);
+        //HOOKBLX(LoadObject_AddAtomicModel, pGTASA + 0x4694DE + 0x1);
+        HOOKPLT(LoadObject_AddAtomicModel, pGTASA + 0x67579C);
         HOOKBLX(LoadObject_GetModelCDName, pGTASA + 0x469506 + 0x1);
       #else
-        HOOKBL(LoadObject_AddDamageAtomicModel, pGTASA + 0x5548FC);
-        HOOKBL(LoadObject_AddAtomicModel, pGTASA + 0x5548F4);
+        //HOOKBL(LoadObject_AddDamageAtomicModel, pGTASA + 0x5548FC);
+        HOOKPLT(LoadObject_AddDamageAtomicModel, pGTASA + 0x8497F0);
+        //HOOKBL(LoadObject_AddAtomicModel, pGTASA + 0x5548F4);
+        HOOKPLT(LoadObject_AddAtomicModel, pGTASA + 0x849258);
         HOOKBL(LoadObject_GetModelCDName, pGTASA + 0x554928);
 
         SET_TO(MaxObjectsDrawDistance, pGTASA + 0x70BD98);
@@ -1295,11 +1332,13 @@ extern "C" void OnAllModsLoaded()
       #ifdef AML32
         LoadScene_BackTo = pGTASA + 0x4691A8 + 0x1;
         aml->Redirect(pGTASA + 0x4691A0 + 0x1, (uintptr_t)LoadScene_Inject);
-        HOOKBLX(GameInit_StartTestScript, pGTASA + 0x3F3788 + 0x1);
+        //HOOKBLX(GameInit_StartTestScript, pGTASA + 0x3F3788 + 0x1);
+        HOOKPLT(GameInit_StartTestScript, pGTASA + 0x6758CC);
       #else
         LoadScene_BackTo = pGTASA + 0x5544EC;
         aml->Redirect(pGTASA + 0x5544DC, (uintptr_t)LoadScene_Inject);
-        HOOKBL(GameInit_StartTestScript, pGTASA + 0x4D5AC0);
+        //HOOKBL(GameInit_StartTestScript, pGTASA + 0x4D5AC0);
+        HOOKPLT(GameInit_StartTestScript, pGTASA + 0x849420);
       #endif
     }
     if (bFestiveLights)
