@@ -353,7 +353,7 @@ void Init_MiniLA()
     {
         static void* coronasPool; // default is 64
 
-        int coronas = 256; // max value __with these patches__ is 819 (because of MOVN)
+        int coronas = 256; // max value __with these patches__ is 409 (STR's imm12 in CCoronas::Init)
         coronasPool = new char[coronas * sizeof(CRegisteredCorona)] {0};
 
         aml->WriteAddr(pGTASA + 0x84B8D0, (uintptr_t)coronasPool);
@@ -363,6 +363,7 @@ void Init_MiniLA()
         aml->Write32(pGTASA + 0x6C67DC, ARMv8::CMPBits::Create (coronas, 22, true ));
         aml->Write32(pGTASA + 0x6C6834, ARMv8::MOVBits::Create (coronas,  8, false));
         aml->Write32(pGTASA + 0x6C7084, ARMv8::MOVNBits::Create(coronas * sizeof(CRegisteredCorona), 8, true ));
+        aml->Write32(pGTASA + 0x6C7090, 0xF900015F | (uint32_t)((((coronas * sizeof(CRegisteredCorona)) + 0x10) >> 3) << 10));
         aml->Write32(pGTASA + 0x6C7380, ARMv8::CMPBits::Create (coronas, 14, false));
         aml->Write32(pGTASA + 0x6C73B4, ARMv8::CMPBits::Create (coronas, 14, false));
         aml->Write32(pGTASA + 0x6C75B4, ARMv8::CMPBits::Create (coronas, 12, false));

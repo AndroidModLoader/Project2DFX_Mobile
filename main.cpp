@@ -252,6 +252,8 @@ void RenderBufferedLODLights()
     RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, (void*)pTargetRaster);
+    RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
+    RwRenderStateSet(rwRENDERSTATECULLMODE, (void*)rwCULLMODECULLNONE);
 
     const float weatherFogScaled = *flWeatherFoggyness * 0.025f;
 
@@ -484,7 +486,7 @@ void LODLightsUpdate()
         while (pNode != &LODLightsUsedList)
         {
             corona = pNode->GetFrom();
-            unsigned int nIndex = corona->Identifier;
+            uintptr_t nIndex = corona->Identifier; // MUST match the map's key width (64-bit on AML64!)
             auto pNext = pNode->GetNextNode();
             corona->Update();
 
@@ -499,8 +501,11 @@ void LODLightsUpdate()
         }
     }
 }
+void FinishCatchingLampposts();
 void RegisterLODLights()
 {
+    if(bCatchLamppostsNow) FinishCatchingLampposts();
+
     if (GetIsTimeInRange(20, 7) && *nActiveInterior == 0)
     {
         unsigned char   bAlpha = 0;
@@ -736,14 +741,18 @@ DECL_HOOKv(GameInit2_CranesInit)
         }
     }
 }
+void FinishCatchingLampposts()
+{
+    RegisterCustomCoronas();
+    bCatchLamppostsNow = false;
+    m_pLampposts->shrink_to_fit();
+    pFileContent->clear();
+}
 DECL_HOOKb(GameInit2_Post, const char* a1)
 {
     if(GameInit2_Post(a1))
     {
-        RegisterCustomCoronas();
-        bCatchLamppostsNow = false;
-        m_pLampposts->shrink_to_fit();
-        pFileContent->clear();
+        FinishCatchingLampposts();
         return true;
     }
     return false;
